@@ -41,6 +41,7 @@ public:
     bool hide_bloom;
     bool hide_mouse;
     bool hide_root;
+    bool multi_repo;
 
     bool disable_auto_rotate;
 
@@ -51,6 +52,7 @@ public:
     std::string load_config;
     std::string save_config;
     std::string path;
+    std::vector<std::string> paths;
     bool default_path;
 
     std::string logo;

@@ -54,9 +54,9 @@ class Gource : public SDLApp {
 
     FrameExporter* frameExporter;
 
-    RLogMill* logmill;
+    ILogMill* logmill;
 
-    RCommitLog* commitlog;
+    ICommitLog* commitlog;
     PositionSlider slider;
     ZoomCamera camera;
 

@@ -18,10 +18,13 @@
 #include "commitlog.h"
 #include "../gource_settings.h"
 #include "../core/sdlapp.h"
+#include "exception"
+#include <algorithm>
+#include "../logmill.h"
 
 #include "../core/utf8/utf8.h"
 
-std::string RCommitLog::filter_utf8(const std::string& str) {
+std::string ICommitLog::filter_utf8(const std::string& str) {
 
     std::string filtered;
 
@@ -90,7 +93,7 @@ RCommitLog::~RCommitLog() {
     }
 }
 
-int RCommitLog::systemCommand(const std::string& command) {
+int ICommitLog::systemCommand(const std::string& command) {
     int rc = system(command.c_str());
     return rc;
 }
@@ -391,3 +394,136 @@ void RCommit::debug() {
         debugLog("%s %s\n", f.action.c_str(), f.filename.c_str());
     }
 }
+
+MultiCommitLog::MultiCommitLog(const std::vector<std::unique_ptr<ILogMill>>& logs){
+    fprintf(stderr, "construct multi commit log\n");
+    for(auto &log : logs )
+    {
+        if( ! log )  continue;
+        ICommitLog* clog = log->getLog();
+        if( ! clog ) continue;
+
+        logPack lp;
+        lp.log = clog;
+        lp.base = log->base;
+
+        queue.push(lp);
+    }
+}
+
+MultiCommitLog::~MultiCommitLog(){
+}
+
+void MultiCommitLog::seekTo(float percent){
+    fprintf(stderr, "seekTo\n");
+    while(true) {
+        logPack lp = queue.top();
+        if( lp.lastCommit){
+            queue.pop();
+            lp.lastCommit = std::nullopt;
+            lp.log->seekTo(percent);
+            queue.push(lp);
+        }
+        else {
+            return;
+        }
+    }
+}
+
+bool MultiCommitLog::checkFormat(){
+    fprintf(stderr, "check format\n");
+    logPack lp = queue.top();
+    return lp.log->checkFormat();
+}
+
+std::string MultiCommitLog::getLogCommand(){
+    fprintf(stderr, "get log command\n");
+    logPack lp = queue.top();
+    return lp.log->getLogCommand();
+}
+
+void MultiCommitLog::requireExecutable(const std::string &exename){
+    //todo something
+}
+
+void MultiCommitLog::bufferCommit(RCommit& commit){
+    fprintf(stderr, "bufferCommit\n");
+    bufferedCommits.emplace(commit.timestamp,  commit);
+}
+
+bool MultiCommitLog::getCommitAt(float percent, RCommit& commit){
+    fprintf(stderr, "getCommitAt\n");
+    seekTo(percent);
+    return nextCommit(commit, true);
+}
+
+bool MultiCommitLog::findNextCommit(RCommit& commit, int attempts){
+    fprintf(stderr, "findNextCommit\n");
+    for(int i=0; i<attempts*2; i++){
+        if( nextCommit(commit, true) ){
+            return false;
+        }
+    }
+    return false;
+}
+
+bool MultiCommitLog::nextCommit(RCommit& commit, bool validate){
+    fprintf(stderr, "nextCommit\n");
+    RCommit com;
+
+    bool ret=false;
+
+    if(!bufferedCommits.empty() ){
+        commit = bufferedCommits.begin()->second;
+        bufferedCommits.erase(bufferedCommits.begin());
+        return true;
+    }
+
+    for(int i=0; i<queue.size() * 5  && !ret ; i++){
+        logPack lp = queue.top();
+        queue.pop();
+        if( lp.lastCommit ) {
+            commit = lp.lastCommit.value();
+            lp.lastCommit = std::nullopt;
+            ret = true;
+        }
+
+        if( lp.log->nextCommit(com, true)){
+            if( lp.base != "" ){
+                for(auto &file: com.files ){
+                    file.filename = lp.base + "/" + file.filename;
+                }
+            }
+            lp.lastCommit = com;
+        }
+
+        if( !lp.log->isFinished() ){
+            queue.push(lp);
+        }
+    }
+    return ret;
+}
+
+bool MultiCommitLog::hasBufferedCommit(){
+    bool ret = !!queue.top().lastCommit;
+    fprintf(stderr, "hasBufferedCommit <%i>. Q size <%i>\n", ret, (int) queue.size());
+    return ret; 
+}
+
+bool MultiCommitLog::isFinished(){
+    bool ret = queue.empty();
+    fprintf(stderr, "isFinished <%i>\n", ret);
+    return ret;
+}
+bool MultiCommitLog::isSeekable(){
+    //fprintf(stderr, "MultiCommitLog isSeekable\n");
+    //todo better
+    return false;
+}
+
+float MultiCommitLog::getPercent(){
+    //todo better
+    float ret=0.0f; 
+    return ret;
+}
+

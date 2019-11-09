@@ -31,6 +31,8 @@
 #include <signal.h>
 #endif
 
+#include <memory>
+
 enum {
     LOGMILL_STATE_STARTUP,
     LOGMILL_STATE_FETCHING,
@@ -38,7 +40,18 @@ enum {
     LOGMILL_STATE_FAILURE
 };
 
-class RLogMill {
+struct ILogMill {
+    std::string base="";
+    virtual ~ILogMill(){}
+    virtual void run() = 0;
+    virtual void abort() = 0;
+    virtual std::string getError() = 0;
+    virtual int getStatus() = 0;
+    virtual bool isFinished() = 0;
+    virtual ICommitLog* getLog() = 0;
+};
+
+class RLogMill: public ILogMill {
     SDL_Thread* thread;
     SDL_mutex* mutex;
     SDL_cond* cond;
@@ -46,26 +59,45 @@ class RLogMill {
     int logmill_thread_state;
 
     std::string logfile;
-    RCommitLog* clog;
+    ICommitLog* clog;
 
     std::string error;
 
     bool findRepository(boost::filesystem::path& dir, std::string& log_format);
-    RCommitLog* fetchLog(std::string& log_format);
+    ICommitLog* fetchLog(std::string& log_format);
 public:
     RLogMill(const std::string& logfile);
-    ~RLogMill();
+    virtual ~RLogMill();
 
-    void run();
+    virtual void run();
 
-    void abort();
+    virtual void abort();
 
-    std::string getError();
+    virtual std::string getError();
 
-    int getStatus();
-    bool isFinished();
+    virtual int getStatus();
+    virtual bool isFinished();
 
-    RCommitLog* getLog();
+    virtual ICommitLog* getLog();
 };
+
+
+class MultiLogMill: public ILogMill {
+    int mill=0;
+    std::vector<std::unique_ptr<ILogMill> > mills;
+
+    std::optional<MultiCommitLog> commitLog;
+public:
+    virtual ~MultiLogMill();
+    MultiLogMill(const std::vector<std::string> &logs);
+
+    virtual void run();
+    virtual void abort();
+    virtual std::string getError();
+    virtual int getStatus();
+    virtual bool isFinished();
+    virtual ICommitLog* getLog();
+};
+
 
 #endif

@@ -27,6 +27,7 @@
 #include "formats/apache.h"
 #include "formats/cvs-exp.h"
 #include "formats/cvs2cl.h"
+#include <memory>
 
 #include <boost/filesystem.hpp>
 
@@ -150,7 +151,7 @@ std::string RLogMill::getError() {
 }
 
 
-RCommitLog* RLogMill::getLog() {
+ICommitLog* RLogMill::getLog() {
 
     if(thread != 0) {
         SDL_WaitThread(thread, 0);
@@ -187,9 +188,9 @@ bool RLogMill::findRepository(boost::filesystem::path& dir, std::string& log_for
 }
 
 
-RCommitLog* RLogMill::fetchLog(std::string& log_format) {
+ICommitLog* RLogMill::fetchLog(std::string& log_format) {
 
-    RCommitLog* clog = 0;
+    ICommitLog* clog = 0;
 
     //if the log format is not specified and 'logfile' is a directory, recursively look for a version control repository.
     //this method allows for something strange like someone who having an svn repository inside a git repository
@@ -335,3 +336,65 @@ RCommitLog* RLogMill::fetchLog(std::string& log_format) {
 
     return 0;
 }
+
+
+MultiLogMill::~MultiLogMill(){}
+
+MultiLogMill::MultiLogMill(const std::vector<std::string> &logs){
+    for( auto& log: logs ){
+        mills.push_back( std::make_unique<RLogMill>(log));
+        mills.back()->base = log+"/";
+    }
+}
+
+void MultiLogMill::MultiLogMill::abort(){
+    for(auto &mil : mills ){
+        mil->abort();
+    }
+}
+
+void MultiLogMill::run(){
+    for(auto &mil : mills ){
+        mil->run();
+    }
+}
+
+std::string MultiLogMill::getError(){
+    //todo better
+    return mills[0]->getError();
+}
+
+int MultiLogMill::getStatus(){
+    //todo do better
+    return mills[0]->getStatus();
+}
+
+bool MultiLogMill::isFinished(){
+    return true;
+    fprintf(stderr, "mill isFinished\n");
+    if( ! commitLog ) {
+        std::vector<ICommitLog*> logs;
+        for(auto &mil: mills) {
+            logs.push_back( mil->getLog() );
+        }
+
+        MultiCommitLog m(mills);
+        commitLog = std::optional<MultiCommitLog>(m);
+    }
+    return commitLog.value().isFinished();
+}
+
+ICommitLog* MultiLogMill::getLog(){
+    if( ! commitLog )
+    {
+        std::vector<ICommitLog*> logs;
+        for(auto &mil: mills) {
+            logs.push_back( mil->getLog() );
+        }
+
+        MultiCommitLog m(mills);
+        commitLog = std::optional<MultiCommitLog>(m);
+    }
+    return &(commitLog.value());
+}
+

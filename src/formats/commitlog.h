@@ -24,10 +24,16 @@
 #include "../core/regex.h"
 #include "../core/stringhash.h"
 
+class ILogMill;
+
 #include <time.h>
 #include <string>
 #include <list>
-
+#include <map>
+#include <memory>
+#include <queue>
+#include <functional>
+#include <optional>
 #include "sys/stat.h"
 
 class RCommitFile {
@@ -58,7 +64,29 @@ public:
     virtual bool parse(BaseLog* logf) { return false; };
 };
 
-class RCommitLog {
+class ICommitLog {
+public:
+    virtual ~ICommitLog(){}
+
+    static std::string filter_utf8(const std::string& str);
+    virtual void seekTo(float percent) = 0;
+    virtual bool checkFormat() = 0;
+    virtual std::string getLogCommand() = 0;
+    static int systemCommand(const std::string& command);
+    virtual void requireExecutable(const std::string& exename) = 0;
+    virtual void bufferCommit(RCommit& commit) = 0;
+    virtual bool getCommitAt(float percent, RCommit& commit) = 0;
+    virtual bool findNextCommit(RCommit& commit, int attempts) = 0;
+    virtual bool nextCommit(RCommit& commit, bool validate = true) = 0;
+    virtual bool hasBufferedCommit() = 0;
+    virtual bool isFinished() = 0;
+    virtual bool isSeekable() = 0;
+    virtual float getPercent() = 0;
+};
+
+
+
+class RCommitLog : public ICommitLog {
 protected:
     BaseLog* logf;
 
@@ -86,26 +114,85 @@ public:
     RCommitLog(const std::string& logfile, int firstChar = -1);
     virtual ~RCommitLog();
 
-    static std::string filter_utf8(const std::string& str);
 
-    void seekTo(float percent);
+    virtual void seekTo(float percent);
 
-    bool checkFormat();
+    virtual bool checkFormat();
 
-    std::string getLogCommand();
+    virtual std::string getLogCommand();
 
-    static int systemCommand(const std::string& command);
-    void requireExecutable(const std::string& exename);
+    virtual void requireExecutable(const std::string& exename);
 
-    void bufferCommit(RCommit& commit);
+    virtual void bufferCommit(RCommit& commit);
 
-    bool getCommitAt(float percent, RCommit& commit);
-    bool findNextCommit(RCommit& commit, int attempts);
-    bool nextCommit(RCommit& commit, bool validate = true);
-    bool hasBufferedCommit();
-    bool isFinished();
-    bool isSeekable();
-    float getPercent();
+    virtual bool getCommitAt(float percent, RCommit& commit);
+    virtual bool findNextCommit(RCommit& commit, int attempts);
+    virtual bool nextCommit(RCommit& commit, bool validate = true);
+    virtual bool hasBufferedCommit();
+    virtual bool isFinished();
+    virtual bool isSeekable();
+    virtual float getPercent();
 };
+
+class MultiCommitLog : public ICommitLog {
+
+    std::multimap<time_t, RCommit> bufferedCommits;
+
+    virtual bool parseCommit(RCommit& commit) { return false; };
+
+    std::multimap<time_t, RCommit> commits;
+public:
+    struct logPack {
+        ICommitLog *log;
+        std::string base;
+        std::optional<RCommit> lastCommit;
+    };
+private:
+    std::priority_queue<logPack, std::vector<logPack> , std::greater<logPack> > queue;
+public:
+
+
+
+    MultiCommitLog(const std::vector<std::unique_ptr<ILogMill>> &mills);
+    virtual ~MultiCommitLog();
+
+
+    virtual void seekTo(float percent);
+
+    virtual bool checkFormat();
+
+    virtual std::string getLogCommand();
+
+    virtual void requireExecutable(const std::string& exename);
+
+    virtual void bufferCommit(RCommit& commit);
+
+    virtual bool getCommitAt(float percent, RCommit& commit);
+    virtual bool findNextCommit(RCommit& commit, int attempts);
+    virtual bool nextCommit(RCommit& commit, bool validate = true);
+    virtual bool hasBufferedCommit();
+    virtual bool isFinished();
+    virtual bool isSeekable();
+    virtual float getPercent();
+};
+
+
+#if 0
+inline bool operator<(const MultiCommitLog::logPack &a, const MultiCommitLog::logPack &b) {
+    if( a.lastCommit && ! b.lastCommit) return false;
+    if( a.lastCommit && a.lastCommit.value().timestamp >= b.lastCommit.value().timestamp ) return false;
+    return a.base < b.base;
+}
+#endif
+
+inline bool operator>(const MultiCommitLog::logPack &a, const MultiCommitLog::logPack &b) {
+    time_t at =0, bt=0;
+    if( a.lastCommit ) at = a.lastCommit.value().timestamp;
+    if( b.lastCommit ) bt = b.lastCommit.value().timestamp;
+
+    if( at > bt ) return true;
+    if( at < bt ) return false;
+    return a.base > b.base;
+}
 
 #endif

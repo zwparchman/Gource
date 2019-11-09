@@ -146,7 +146,12 @@ Gource::Gource(FrameExporter* exporter) {
 
     reset();
 
-    logmill = new RLogMill(logfile);
+    if( gGourceSettings.multi_repo ) {
+        logmill = new MultiLogMill(gGourceSettings.paths);
+    }
+    else {
+        logmill = new RLogMill(logfile);
+    }
 
     if(exporter!=0) setFrameExporter(exporter, gGourceSettings.output_framerate);
 
@@ -157,7 +162,7 @@ Gource::Gource(FrameExporter* exporter) {
 void Gource::writeCustomLog(const std::string& logfile, const std::string& output_file) {
 
     RLogMill logmill(logfile);
-    RCommitLog* commitlog = logmill.getLog();
+    ICommitLog* commitlog = logmill.getLog();
 
     // TODO: exception handling
 
@@ -1082,7 +1087,7 @@ void Gource::loadCaptions() {
         if(!caption_regex.match(line, &matches)) continue;
 
         time_t timestamp    = atol(matches[0].c_str());
-        std::string caption = RCommitLog::filter_utf8(matches[1]);
+        std::string caption = ICommitLog::filter_utf8(matches[1]);
 
         //ignore older captions
         if(timestamp < currtime) continue;
@@ -1107,7 +1112,8 @@ void Gource::readLog() {
     //debugLog("readLog()\n");
 
     // read commits until either we are ahead of currtime
-    while((commitlog->hasBufferedCommit() || !commitlog->isFinished()) && (commitqueue.empty() || (commitqueue.back().timestamp <= currtime && commitqueue.size() < commitqueue_max_size)) ) {
+    while((commitlog->hasBufferedCommit() || !commitlog->isFinished())
+          && (commitqueue.empty() || (commitqueue.back().timestamp <= currtime && commitqueue.size() < commitqueue_max_size)) ) {
 
         RCommit commit;
 
