@@ -16,6 +16,9 @@
 */
 
 #include "user.h"
+#include <algorithm>
+#include <execution>
+#include "Timing.h"
 
 float gGourceBeamDist          = 100.0;
 float gGourceActionDist        = 50.0;
@@ -61,28 +64,28 @@ void RUser::addAction(RAction* action) {
 // remove references to this file
 void RUser::fileRemoved(RFile* f) {
 
-    for(std::list<RAction*>::iterator it = actions.begin(); it != actions.end(); ) {
+    auto myFile = [&](auto it){ return it->target != f; };
+
+    auto split = std::partition(actions.begin(), actions.end(), myFile);
+    for(auto it = split; it != actions.end(); it ++) {
         RAction* a = *it;
         if(a->target == f) {
-            it = actions.erase(it);
-            delete a;
-            actionCount--;
-            continue;
-        }
-
-        it++;
-    }
-
-    for(std::list<RAction*>::iterator it = activeActions.begin(); it != activeActions.end(); ) {
-        RAction* a = *it;
-        if(a->target == f) {
-            it = activeActions.erase(it);
             delete a;
             continue;
         }
-
-        it++;
     }
+    actionCount -= actions.end() - split;
+    actions.erase(split, actions.end());
+
+    auto activeSplit = std::partition(activeActions.begin(), activeActions.end(), myFile);
+    for(auto it = activeSplit; it != activeActions.end(); it++) {
+        RAction* a = *it;
+        if(a->target == f) {
+            delete a;
+            continue;
+        }
+    }
+    activeActions.erase(activeSplit, activeActions.end());
 }
 
 void RUser::applyForceUser(RUser* u) {
@@ -150,7 +153,7 @@ void RUser::applyForceToActions() {
 
     // move towards actions being worked on
 
-    for(std::list<RAction*>::iterator it = activeActions.begin(); it != activeActions.end(); it++) {
+    for(auto it = activeActions.begin(); it != activeActions.end(); it++) {
         RAction* action = *it;
 
         applyForceAction(action);
@@ -162,7 +165,7 @@ void RUser::applyForceToActions() {
     if(!activeActions.empty()) return;
 
     //if no actions being worked on, move towards one pending action
-    for(std::list<RAction*>::iterator it = actions.begin(); it != actions.end(); it++) {
+    for(auto it = actions.begin(); it != actions.end(); it++) {
         RAction* action = *it;
 
         applyForceAction(action);
@@ -242,7 +245,7 @@ void RUser::logic(float t, float dt) {
     }
 
     //add next active action, if it is in range
-    for(std::list<RAction*>::iterator it = actions.begin(); it != actions.end();) {
+    for(auto it = actions.begin(); it != actions.end();) {
         RAction* action = *it;
 
         //add all files which are too old
@@ -278,7 +281,7 @@ void RUser::logic(float t, float dt) {
     }
 
     //update actions
-    for(std::list<RAction*>::iterator it = activeActions.begin(); it != activeActions.end(); ) {
+    for(auto it = activeActions.begin(); it != activeActions.end(); ) {
 
         RAction* action = *it;
 
@@ -397,7 +400,7 @@ void RUser::drawNameText(float alpha) {
 
 void RUser::updateActionsVBO(quadbuf& buffer) {
 
-    for(std::list<RAction*>::iterator it = activeActions.begin(); it != activeActions.end(); it++) {
+    for(auto it = activeActions.begin(); it != activeActions.end(); it++) {
         RAction* action = *it;
         action->drawToVBO(buffer);
     }
@@ -405,7 +408,7 @@ void RUser::updateActionsVBO(quadbuf& buffer) {
 
 void RUser::drawActions(float dt) {
 
-    for(std::list<RAction*>::iterator it = activeActions.begin(); it != activeActions.end(); it++) {
+    for(auto it = activeActions.begin(); it != activeActions.end(); it++) {
         RAction* action = *it;
         action->draw(dt);
     }

@@ -35,8 +35,8 @@ class RUser : public Pawn {
 
     void assignUserImage();
 
-    std::list<RAction*> actions;
-    std::list<RAction*> activeActions;
+    std::vector<RAction*> actions;
+    std::vector<RAction*> activeActions;
     size_t actionCount;
     size_t activeCount;
 
