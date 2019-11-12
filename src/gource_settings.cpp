@@ -726,7 +726,8 @@ void GourceSettings::importGourceSettings(ConfFile& conffile, ConfSection* gourc
 
         std::string branch = entry->getString();
 
-        if(branch_regex.match(branch)) {
+        // --all is will include commits from all branches
+        if(branch_regex.match(branch) || branch == "--all" ) {
             git_branch = branch;
         } else {
             conffile.invalidValueException(entry);
