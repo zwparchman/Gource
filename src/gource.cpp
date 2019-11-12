@@ -17,6 +17,7 @@
 
 #include "gource.h"
 #include "core/png_writer.h"
+#include "Timing.h"
 
 bool  gGourceDrawBackground  = true;
 bool  gGourceQuadTreeDebug   = false;
@@ -951,6 +952,9 @@ void Gource::reset() {
 void Gource::deleteFile(RFile* file) {
     //debugLog("removing file %s\n", file->fullpath.c_str());
 
+    static TimerWriter timer("timing.txt", "Gource::deleteFile");
+    auto up = timer.getUpdater();
+
     root->removeFile(file);
 
     if(hoverFile == file) {
@@ -960,6 +964,7 @@ void Gource::deleteFile(RFile* file) {
     if(selectedFile == file) {
         selectFile(0);
     }
+
 
     //remove from any users with actions against this file - wrong way around? meh
     for(std::map<std::string,RUser*>::iterator it = users.begin(); it!=users.end(); it++) {
