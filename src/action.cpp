@@ -23,9 +23,14 @@ RAction::RAction(RUser* source, RFile* target, time_t timestamp, float t, const 
 
 void RAction::apply() {
     target->touch(timestamp, colour);
+
+    if(OnApply) {
+        OnApply.value()(*this);
+    }
 }
 
 void RAction::logic(float dt) {
+    float old_progress = progress;
     if(progress >= 1.0) return;
 
     if(progress == 0.0) {
@@ -35,6 +40,11 @@ void RAction::logic(float dt) {
     float action_rate = std::min(10.0f, rate * std::max(1.0f, ((float)source->getPendingActionCount())));
 
     progress = std::min(progress + action_rate * dt, 1.0f);
+
+    if( OnLogic ) {
+
+        OnLogic.value()(*this, old_progress, progress);
+    }
 }
 
 void RAction::drawToVBO(quadbuf& buffer) const {
@@ -98,29 +108,26 @@ void RAction::draw(float dt) {
     glEnd();
 }
 
-CreateAction::CreateAction(RUser* source, RFile* target, time_t timestamp, float t)
-    : RAction(source, target, timestamp, t, vec3(0.0f, 1.0f, 0.0f)) {
+RAction RAction::CreateAction(RUser* source, RFile* target, time_t timestamp, float t){
+    return RAction(source, target, timestamp, t, vec3(0.0f, 1.0f, 0.0f));
 }
 
-RemoveAction::RemoveAction(RUser* source, RFile* target, time_t timestamp, float t)
-    : RAction(source, target, timestamp, t, vec3(1.0f, 0.0f, 0.0f)) {
+RAction RAction::RemoveAction(RUser* source, RFile* target, time_t timestamp, float t){
+    RAction ret(source, target, timestamp, t, vec3(1.0f, 0.0f, 0.0f));
+    ret.OnLogic = [=](RAction &action, float oldProgress, float dt) {
+            if(oldProgress < 1.0 && action.progress >= 1.0) {
+                action.target->remove(timestamp);
+            }
+        };
+    return ret;
+}
+RAction RAction::ModifyAction(RUser* source, RFile* target, time_t timestamp, float t, const vec3& modify_colour){
+    RAction ret(source, target, timestamp, t, vec3(1.0f, 0.7f, 0.3f));
+
+    ret.OnApply = [=](RAction &action){
+        action.target->setFileColour(modify_colour);
+    };
+    return ret;
 }
 
-void RemoveAction::logic(float dt) {
-    float old_progress = progress;
 
-    RAction::logic(dt);
-
-    if(old_progress < 1.0 && progress >= 1.0) {
-        target->remove(timestamp);
-    }
-}
-
-ModifyAction::ModifyAction(RUser* source, RFile* target, time_t timestamp, float t, const vec3& modify_colour)
-    : RAction(source, target, timestamp, t, vec3(1.0f, 0.7f, 0.3f)), modify_colour(modify_colour) {
-}
-
-void ModifyAction::apply() {
-    RAction::apply();
-    target->setFileColour(modify_colour);
-}

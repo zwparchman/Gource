@@ -1252,21 +1252,19 @@ void Gource::addFileAction(const RCommit& commit, const RCommitFile& cf, RFile* 
 
     //create action
 
-    RAction* userAction = 0;
+    std::optional<RAction> userAction;
 
     commit_seq++;
 
     if(cf.action == "D") {
-        userAction = new RemoveAction(user, file, commit.timestamp, t);
+        userAction = RAction::RemoveAction(user, file, commit.timestamp, t);
+    } else if(cf.action == "A") {
+        userAction = RAction::CreateAction(user, file, commit.timestamp, t);
     } else {
-        if(cf.action == "A") {
-            userAction = new CreateAction(user, file, commit.timestamp, t);
-        } else {
-            userAction = new ModifyAction(user, file, commit.timestamp, t, cf.colour);
-        }
+        userAction = RAction::ModifyAction(user, file, commit.timestamp, t, cf.colour);
     }
 
-    user->addAction(userAction);
+    user->addAction(userAction.value());
 }
 
 void Gource::interactUsers() {

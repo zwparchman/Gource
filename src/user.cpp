@@ -50,9 +50,9 @@ RUser::RUser(const std::string& name, vec2 pos, int tagid) : Pawn(name,pos,tagid
     actionCount = activeCount = 0;
 }
 
-void RUser::addAction(RAction* action) {
+void RUser::addAction(RAction& action) {
 
-    if(action->source != this) return;
+    if(action.source != this) return;
 
     if(isIdle()) showName();
     //name_interval = name_interval > 0.0 ? std::max(name_interval,nametime-1.0f) : nametime;
@@ -64,28 +64,15 @@ void RUser::addAction(RAction* action) {
 // remove references to this file
 void RUser::fileRemoved(RFile* f) {
 
-    auto myFile = [&](auto it){ return it->target != f; };
+    auto myFile = [&](auto& it){ return it.target != f; };
 
     auto split = std::partition(actions.begin(), actions.end(), myFile);
-    for(auto it = split; it != actions.end(); it ++) {
-        RAction* a = *it;
-        if(a->target == f) {
-            delete a;
-            continue;
-        }
-    }
-    actionCount -= actions.end() - split;
+    actionCount = actions.size();
     actions.erase(split, actions.end());
 
     auto activeSplit = std::partition(activeActions.begin(), activeActions.end(), myFile);
-    for(auto it = activeSplit; it != activeActions.end(); it++) {
-        RAction* a = *it;
-        if(a->target == f) {
-            delete a;
-            continue;
-        }
-    }
     activeActions.erase(activeSplit, activeActions.end());
+    activeCount = activeActions.size();
 }
 
 void RUser::applyForceUser(RUser* u) {
@@ -117,8 +104,8 @@ void RUser::applyForceUser(RUser* u) {
     }
 }
 
-void RUser::applyForceAction(RAction* action) {
-    RFile* f = action->target;
+void RUser::applyForceAction(RAction& action) {
+    RFile* f = action.target;
 
     vec2 f_pos = f->getAbsolutePos();
     vec2 dir = f_pos - pos;
@@ -154,7 +141,7 @@ void RUser::applyForceToActions() {
     // move towards actions being worked on
 
     for(auto it = activeActions.begin(); it != activeActions.end(); it++) {
-        RAction* action = *it;
+        RAction& action = *it;
 
         applyForceAction(action);
 
@@ -166,7 +153,7 @@ void RUser::applyForceToActions() {
 
     //if no actions being worked on, move towards one pending action
     for(auto it = actions.begin(); it != actions.end(); it++) {
-        RAction* action = *it;
+        RAction& action = *it;
 
         applyForceAction(action);
 
@@ -246,26 +233,26 @@ void RUser::logic(float t, float dt) {
 
     //add next active action, if it is in range
     for(auto it = actions.begin(); it != actions.end();) {
-        RAction* action = *it;
+        RAction& action = *it;
 
         //add all files which are too old
-        if(gGourceSettings.max_file_lag>=0.0 && action->t < t - gGourceSettings.max_file_lag) {
+        if(gGourceSettings.max_file_lag>=0.0 && action.t < t - gGourceSettings.max_file_lag) {
+            activeActions.push_back(action);
             it = actions.erase(it);
             actionCount--;
-            action->rate = 2.0;
-            activeActions.push_back(action);
+            action.rate = 2.0;
             activeCount++;
             continue;
         }
 
         if(!find_nearby_action) break;
 
-        float action_dist = glm::length(action->target->getAbsolutePos() - pos);
+        float action_dist = glm::length(action.target->getAbsolutePos() - pos);
 
         //queue first action in range
         if(action_dist < gGourceBeamDist) {
-            it = actions.erase(it);
             activeActions.push_back(action);
+            it = actions.erase(it);
             actionCount--; activeCount++;
             break;
         }
@@ -283,13 +270,12 @@ void RUser::logic(float t, float dt) {
     //update actions
     for(auto it = activeActions.begin(); it != activeActions.end(); ) {
 
-        RAction* action = *it;
+        RAction& action = *it;
 
-        action->logic(dt);
+        action.logic(dt);
 
-        if(action->isFinished()) {
+        if(action.isFinished()) {
             it = activeActions.erase(it);
-            delete action;
             activeCount--;
             continue;
         }
@@ -401,16 +387,14 @@ void RUser::drawNameText(float alpha) {
 void RUser::updateActionsVBO(quadbuf& buffer) {
 
     for(auto it = activeActions.begin(); it != activeActions.end(); it++) {
-        RAction* action = *it;
-        action->drawToVBO(buffer);
+        it->drawToVBO(buffer);
     }
 }
 
 void RUser::drawActions(float dt) {
 
     for(auto it = activeActions.begin(); it != activeActions.end(); it++) {
-        RAction* action = *it;
-        action->draw(dt);
+        it->draw(dt);
     }
 }
 

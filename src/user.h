@@ -35,8 +35,8 @@ class RUser : public Pawn {
 
     void assignUserImage();
 
-    std::vector<RAction*> actions;
-    std::vector<RAction*> activeActions;
+    std::vector<RAction> actions;
+    std::vector<RAction> activeActions;
     size_t actionCount;
     size_t activeCount;
 
@@ -66,7 +66,7 @@ public:
     const std::string& getName() const;
 
     void fileRemoved(RFile* f);
-    void addAction(RAction* action);
+    void addAction(RAction& action);
 
     bool isIdle();
     bool isFading();
@@ -81,7 +81,7 @@ public:
     float getAlpha() const;
 
     void applyForceToActions();
-    void applyForceAction(RAction* action);
+    void applyForceAction(RAction& action);
     void applyForceUser(RUser* u);
 
     void calcScreenPos(GLint* viewport, GLdouble* modelview, GLdouble* projection);

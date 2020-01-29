@@ -20,15 +20,15 @@
 
 #include "user.h"
 #include "file.h"
+#include "functional"
 
 class RUser;
 class RFile;
 
 class RAction {
-protected:
-    vec3 colour;
-    virtual void apply();
 public:
+    vec3 colour;
+    void apply();
     RUser* source;
     RFile* target;
 
@@ -39,36 +39,24 @@ public:
     float rate;
 
     RAction(RUser* source, RFile* target, time_t timestamp, float t, const vec3& colour);
-    virtual ~RAction() {};
+    ~RAction() {};
+
+    std::optional<std::function<void(RAction &, float, float)>> OnLogic;
+    std::optional<std::function<void(RAction &)>> OnApply;
     
     inline bool isFinished() const { return (progress >= 1.0); };
 
-    virtual void logic(float dt);
+    void logic(float dt);
 
     void drawToVBO(quadbuf& buffer) const ;
     void draw(float dt);
+
+    static RAction CreateAction(RUser* source, RFile* target, time_t timestamp, float t);
+    static RAction RemoveAction(RUser* source, RFile* target, time_t timestamp, float t);
+    static RAction ModifyAction(RUser* source, RFile* target, 
+                                time_t timestamp, float t, const vec3& modify_colour);
 };
 
-class CreateAction : public RAction {
-public:
-    CreateAction(RUser* source, RFile* target, time_t timestamp, float t);
-};
-
-class RemoveAction : public RAction {
-public:
-    RemoveAction(RUser* source, RFile* target, time_t timestamp, float t);
-
-    void logic(float dt);
-};
-
-class ModifyAction : public RAction {
-protected:
-    vec3 modify_colour;
-public:
-    ModifyAction(RUser* source, RFile* target, time_t timestamp, float t, const vec3& modify_colour);
-
-    void apply();
-};
 
 #endif
 
