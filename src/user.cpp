@@ -66,11 +66,11 @@ void RUser::fileRemoved(RFile* f) {
 
     auto myFile = [&](auto& it){ return it.target != f; };
 
-    auto split = std::partition(actions.begin(), actions.end(), myFile);
+    auto split = std::remove_if(actions.begin(), actions.end(), myFile);
     actionCount = actions.size();
     actions.erase(split, actions.end());
 
-    auto activeSplit = std::partition(activeActions.begin(), activeActions.end(), myFile);
+    auto activeSplit = std::remove_if(activeActions.begin(), activeActions.end(), myFile);
     activeActions.erase(activeSplit, activeActions.end());
     activeCount = activeActions.size();
 }
@@ -275,8 +275,10 @@ void RUser::logic(float t, float dt) {
         action.logic(dt);
 
         if(action.isFinished()) {
+            actions.push_back(*it);
             it = activeActions.erase(it);
             activeCount--;
+            actionCount++;
             continue;
         }
 
