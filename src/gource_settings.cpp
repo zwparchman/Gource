@@ -1595,7 +1595,6 @@ void GourceSettings::importGourceSettings(ConfFile& conffile, ConfSection* gourc
     paths.push_back("/home/zack/src/Prusa3");
     paths.push_back("/home/zack/src/WaveFunctionCollapse");
     paths.push_back("/home/zack/src/aseprite");
-#if 0
     paths.push_back("/home/zack/src/evtest-qt");
     paths.push_back("/home/zack/src/ncollide");
     paths.push_back("/home/zack/src/nphysics");
@@ -1603,6 +1602,7 @@ void GourceSettings::importGourceSettings(ConfFile& conffile, ConfSection* gourc
     paths.push_back("/home/zack/src/wxWidgets");
     paths.push_back("/home/zack/src/x52pro-linux");
     paths.push_back("/home/zack/src/youtube-dl");
+#if 0
 #endif
 
     if(path == "-") {
