@@ -20,6 +20,8 @@
 
 #include <deque>
 #include <list>
+#include <vector>
+#include <deque>
 #include <fstream>
 
 #include "core/display.h"
@@ -182,8 +184,8 @@ class Gource : public SDLApp {
     std::map<std::string, RFile*> files;
     std::map<int, RUser*> tagusermap;
 
-    std::list<RCaption*> captions;
-    std::list<RCaption*> active_captions;
+    std::deque<RCaption*> captions;
+    std::vector<RCaption*> active_captions;
 
     QuadTree* dirNodeTree;
     QuadTree* userTree;

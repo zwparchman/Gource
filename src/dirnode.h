@@ -31,6 +31,7 @@
 #include "bloom.h"
 
 #include <list>
+#include <vector>
 #include <set>
 
 class RFile;
@@ -42,8 +43,8 @@ class RDirNode : public QuadItem {
     int         path_token_offset;
 
     RDirNode* parent;
-    std::list<RDirNode*> children;
-    std::list<RFile*> files;
+    std::vector<RDirNode*> children;
+    std::vector<RFile*> files;
 
     SplineEdge spline;
 
@@ -143,7 +144,7 @@ public:
 
     int getDepth() const;
 
-    const std::list<RDirNode*> & getChildren() const;
+    const std::vector<RDirNode*> & getChildren() const;
 
     void updateQuadItemBounds();
 
@@ -151,8 +152,8 @@ public:
     float getRadius() const;
     float getRadiusSqrt() const;
 
-    const std::list<RFile*>* getFiles() const { return &files; };
-    void getFilesRecursive(std::list<RFile*>& files) const;
+    const std::vector<RFile*>* getFiles() const { return &files; };
+    void getFilesRecursive(std::vector<RFile*>& files) const;
 
     vec3 averageFileColour() const;
 
@@ -161,7 +162,7 @@ public:
     RDirNode* getParent() const;
 
     bool isDir(const std::string& path) const;
-    void findDirs(const std::string& path, std::list<RDirNode*>& dirs);
+    void findDirs(const std::string& path, std::vector<RDirNode*>& dirs);
 
     const vec2 & getPos() const;
 

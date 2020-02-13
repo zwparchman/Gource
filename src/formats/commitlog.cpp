@@ -389,7 +389,7 @@ bool RCommit::isValid() {
 void RCommit::debug() {
     debugLog("files:\n");
 
-    for(std::list<RCommitFile>::iterator it = files.begin(); it != files.end(); it++) {
+    for(std::vector<RCommitFile>::iterator it = files.begin(); it != files.end(); it++) {
         RCommitFile f = *it;
         debugLog("%s %s\n", f.action.c_str(), f.filename.c_str());
     }

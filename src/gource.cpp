@@ -194,7 +194,7 @@ void Gource::writeCustomLog(const std::string& logfile, const std::string& outpu
             continue;
         }
 
-        for(std::list<RCommitFile>::iterator it = commit.files.begin(); it != commit.files.end(); it++) {
+        for(std::vector<RCommitFile>::iterator it = commit.files.begin(); it != commit.files.end(); it++) {
             RCommitFile& cf = *it;
             fprintf(fh, "%lld|%s|%s|%s\n", (long long int) commit.timestamp, commit.username.c_str(), cf.action.c_str(), cf.filename.c_str());
         }
@@ -925,11 +925,11 @@ void Gource::reset() {
         delete it->second;
     }
 
-    for(std::list<RCaption*>::iterator it = captions.begin(); it!=captions.end();it++) {
+    for(std::deque<RCaption*>::iterator it = captions.begin(); it!=captions.end();it++) {
         delete (*it);
     }
 
-    for(std::list<RCaption*>::iterator it = active_captions.begin(); it!=active_captions.end();it++) {
+    for(std::vector<RCaption*>::iterator it = active_captions.begin(); it!=active_captions.end();it++) {
         delete (*it);
     }
 
@@ -1168,7 +1168,7 @@ void Gource::readLog() {
 void Gource::processCommit(const RCommit& commit, float t) {
 
     //find files of this commit or create it
-    for(std::list<RCommitFile>::const_iterator it = commit.files.begin(); it != commit.files.end(); it++) {
+    for(std::vector<RCommitFile>::const_iterator it = commit.files.begin(); it != commit.files.end(); it++) {
 
         const RCommitFile& cf = *it;
         RFile* file = 0;
@@ -1183,22 +1183,22 @@ void Gource::processCommit(const RCommit& commit, float t) {
 
             if(cf.action != "D") continue;
 
-            std::list<RDirNode*> dirs;
+            std::vector<RDirNode*> dirs;
 
             root->findDirs(cf.filename, dirs);
 
-            for(std::list<RDirNode*>::iterator it = dirs.begin(); it != dirs.end(); it++) {
+            for(std::vector<RDirNode*>::iterator it = dirs.begin(); it != dirs.end(); it++) {
 
                 RDirNode* dir = (*it);
 
                 //fprintf(stderr, "deleting everything under %s because of %s\n", dir->getPath().c_str(), cf.filename.c_str());
 
                 //foreach dir files
-                std::list<RFile*> dir_files;
+                std::vector<RFile*> dir_files;
 
                 dir->getFilesRecursive(dir_files);
 
-                for(std::list<RFile*>::iterator it = dir_files.begin(); it != dir_files.end(); it++) {
+                for(std::vector<RFile*>::iterator it = dir_files.begin(); it != dir_files.end(); it++) {
                     RFile* file = *it;
 
                     addFileAction(commit, cf, file, t);
@@ -1823,7 +1823,7 @@ void Gource::logic(float t, float dt) {
         active_captions.push_back(caption);
     }
 
-    for(std::list<RCaption*>::iterator it = active_captions.begin(); it!=active_captions.end();) {
+    for(std::vector<RCaption*>::iterator it = active_captions.begin(); it!=active_captions.end();) {
          RCaption* caption = *it;
 
          caption->logic(dt);
@@ -1896,9 +1896,9 @@ void Gource::mousetrace(float dt) {
 
             RDirNode* dir = (RDirNode*) *it;
 
-            const std::list<RFile*>* files = dir->getFiles();
+            const std::vector<RFile*>* files = dir->getFiles();
 
-            for(std::list<RFile*>::const_iterator fi = files->begin(); fi != files->end(); fi++) {
+            for(std::vector<RFile*>::const_iterator fi = files->begin(); fi != files->end(); fi++) {
 
                 RFile* file = *fi;
 
@@ -2629,7 +2629,7 @@ void Gource::draw(float t, float dt) {
         fontmedium.alignTop(true);
     }
 
-    for(std::list<RCaption*>::iterator it = active_captions.begin(); it!=active_captions.end(); it++) {
+    for(std::vector<RCaption*>::iterator it = active_captions.begin(); it!=active_captions.end(); it++) {
         RCaption* caption = *it;
 
         caption->draw();

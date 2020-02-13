@@ -29,6 +29,7 @@ class ILogMill;
 #include <time.h>
 #include <string>
 #include <list>
+#include <vector>
 #include <map>
 #include <memory>
 #include <queue>
@@ -51,7 +52,7 @@ public:
     time_t timestamp;
     std::string username;
 
-    std::list<RCommitFile> files;
+    std::vector<RCommitFile> files;
 
     void postprocess();
     bool isValid();
