@@ -16,8 +16,10 @@
 */
 
 #include "main.h"
+#include "git2.h"
 
 int main(int argc, char *argv[]) {
+    git_libgit2_init();
 
     std::string exepath;
 #ifndef _WIN32
