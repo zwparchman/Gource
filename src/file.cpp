@@ -19,7 +19,8 @@
 
 float gGourceFileDiameter  = 8.0;
 
-std::vector<RFile*> gGourceRemovedFiles;
+std::vector<std::shared_ptr<RFile>> gGourceRemovedFiles;
+std::unordered_map<std::string, std::weak_ptr<RFile> > gAllfiles;
 
 FXFont file_selected_font;
 FXFont file_font;
@@ -208,15 +209,18 @@ void RFile::logic(float dt) {
         expired = true;
 
         bool found = false;
-        for(std::vector<RFile*>::iterator it = gGourceRemovedFiles.begin(); it != gGourceRemovedFiles.end(); it++) {
-            if((*it) == this) {
+        for(auto it = gGourceRemovedFiles.begin(); it != gGourceRemovedFiles.end(); it++) {
+            if((*it).get() == this) {
                 found = true;
                 break;
             }
         }
 
         if(!found) {
-            gGourceRemovedFiles.push_back(this);
+            std::shared_ptr<RFile> strong = gAllfiles[fullpath].lock();
+            if( strong ) {
+                gGourceRemovedFiles.push_back(strong);
+            }
             //fprintf(stderr, "expiring %s\n", fullpath.c_str());
         }
     }
@@ -237,9 +241,12 @@ void RFile::touch(time_t touched_timestamp, const vec3 & colour) {
 
     //un expire file if touched after being removed
     if(expired) {
-        for(std::vector<RFile*>::iterator it = gGourceRemovedFiles.begin(); it != gGourceRemovedFiles.end(); it++) {
-            if((*it) == this) {
-                gGourceRemovedFiles.erase(it);
+        for(auto it = gGourceRemovedFiles.begin(); it != gGourceRemovedFiles.end(); it++) {
+            if((*it).get() == this) {
+                std::shared_ptr<RFile> strong = gAllfiles[fullpath].lock();
+                if( strong ) {
+                    gGourceRemovedFiles.erase(it);
+                }
                 break;
             }
         }

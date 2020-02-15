@@ -16,6 +16,7 @@
 */
 
 #include "pawn.h"
+#include "Timing.h"
 
 float gGourceShadowStrength = 0.5;
 
@@ -71,6 +72,9 @@ void Pawn::updateQuadItemBounds() {
 }
 
 void Pawn::logic(float dt) {
+    static TimerWriter timer("timing.txt", "Pawn::logic");
+    auto up = timer.getUpdater();
+
     elapsed += dt;
 
     if(!isHidden()) {

@@ -90,8 +90,8 @@ public:
 
     void colourize();
     
-    void inc(RFile* file);
-    void dec(RFile* file);
+    void inc(std::shared_ptr<RFile> file);
+    void dec(std::shared_ptr<RFile> file);
 
     void logic(float dt);
     

@@ -30,7 +30,7 @@ public:
     vec3 colour;
     void apply();
     RUser* source;
-    RFile* target;
+    std::shared_ptr<RFile> target;
 
     time_t timestamp;
     float t;
@@ -38,7 +38,7 @@ public:
     float progress;
     float rate;
 
-    RAction(RUser* source, RFile* target, time_t timestamp, float t, const vec3& colour);
+    RAction(RUser* source, std::shared_ptr<RFile> target, time_t timestamp, float t, const vec3& colour);
     ~RAction() {};
 
     std::optional<std::function<void(RAction &, float, float)>> OnLogic;
@@ -51,9 +51,9 @@ public:
     void drawToVBO(quadbuf& buffer) const ;
     void draw(float dt);
 
-    static RAction CreateAction(RUser* source, RFile* target, time_t timestamp, float t);
-    static RAction RemoveAction(RUser* source, RFile* target, time_t timestamp, float t);
-    static RAction ModifyAction(RUser* source, RFile* target, 
+    static RAction CreateAction(RUser* source, std::shared_ptr<RFile> target, time_t timestamp, float t);
+    static RAction RemoveAction(RUser* source, std::shared_ptr<RFile> target, time_t timestamp, float t);
+    static RAction ModifyAction(RUser* source, std::shared_ptr<RFile> target, 
                                 time_t timestamp, float t, const vec3& modify_colour);
 };
 

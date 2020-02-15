@@ -62,16 +62,13 @@ void RUser::addAction(RAction& action) {
 }
 
 // remove references to this file
-void RUser::fileRemoved(RFile* f) {
+void RUser::fileRemoved(std::shared_ptr<RFile> f) {
+    auto equals = [=](auto& it){ return it.target == f; };
 
-    auto myFile = [&](auto& it){ return it.target != f; };
-
-    auto split = std::remove_if(actions.begin(), actions.end(), myFile);
+    std::remove_if(actions.begin(), actions.end(), equals);
     actionCount = actions.size();
-    actions.erase(split, actions.end());
 
-    auto activeSplit = std::remove_if(activeActions.begin(), activeActions.end(), myFile);
-    activeActions.erase(activeSplit, activeActions.end());
+    std::remove_if(activeActions.begin(), activeActions.end(), equals);
     activeCount = activeActions.size();
 }
 
@@ -105,7 +102,7 @@ void RUser::applyForceUser(RUser* u) {
 }
 
 void RUser::applyForceAction(RAction& action) {
-    RFile* f = action.target;
+    std::shared_ptr<RFile> f = action.target;
 
     vec2 f_pos = f->getAbsolutePos();
     vec2 dir = f_pos - pos;
@@ -221,6 +218,9 @@ int RUser::getPendingActionCount() {
 }
 
 void RUser::logic(float t, float dt) {
+    static TimerWriter timer("timing.txt", "RUser::logic");
+    auto up = timer.getUpdater();
+
     Pawn::logic(dt);
 
     action_interval -= dt;
@@ -233,6 +233,9 @@ void RUser::logic(float t, float dt) {
 
     //add next active action, if it is in range
     for(auto it = actions.begin(); it != actions.end();) {
+        static TimerWriter timer("timing.txt", "RUser::logic - juggle actions");
+        auto up = timer.getUpdater();
+
         RAction& action = *it;
 
         //add all files which are too old
@@ -267,31 +270,34 @@ void RUser::logic(float t, float dt) {
         action_interval = total_actions ? (1.0 / (float)total_actions) : 1.0;
     }
 
-    //update actions
-    for(auto it = activeActions.begin(); it != activeActions.end(); ) {
+    {
+        static TimerWriter timer("timing.txt", "RUser::logic - Do active actions");
+        auto up = timer.getUpdater();
+        //update actions
+        for(auto it = activeActions.begin(); it != activeActions.end(); ) {
 
-        RAction& action = *it;
 
-        action.logic(dt);
+            RAction& action = *it;
 
-        if(action.isFinished()) {
-            actions.push_back(*it);
-            it = activeActions.erase(it);
-            activeCount--;
-            actionCount++;
-            continue;
+            action.logic(dt);
+
+            if(action.isFinished()) {
+                it = activeActions.erase(it);
+                activeCount--;
+                continue;
+            }
+
+            it++;
         }
 
-        it++;
+        if(glm::length2(accel) > speed * speed) {
+            accel = normalise(accel) * speed;
+        }
+
+        pos += accel * dt;
+
+        accel = accel * std::max(0.0f, (1.0f - gGourceSettings.user_friction*dt));
     }
-
-    if(glm::length2(accel) > speed * speed) {
-        accel = normalise(accel) * speed;
-    }
-
-    pos += accel * dt;
-
-    accel = accel * std::max(0.0f, (1.0f - gGourceSettings.user_friction*dt));
 }
 
 void RUser::updateFont() {

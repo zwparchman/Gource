@@ -22,6 +22,8 @@
 #include "dirnode.h"
 #include "core/stringhash.h"
 
+#include <unordered_map>
+
 class RDirNode;
 
 class RFile : public Pawn {
@@ -92,6 +94,7 @@ public:
 
 extern float gGourceFileDiameter;
 
-extern std::vector<RFile*> gGourceRemovedFiles;
+extern std::vector<std::shared_ptr<RFile>> gGourceRemovedFiles;
+extern std::unordered_map<std::string, std::weak_ptr<RFile> > gAllfiles;
 
 #endif

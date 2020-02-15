@@ -183,7 +183,7 @@ void RDirNode::findDirs(const std::string& path, std::vector<RDirNode*>& dirs) {
     }
 }
 
-void RDirNode::getFilesRecursive(std::vector<RFile*>& files) const {
+void RDirNode::getFilesRecursive(std::vector<std::shared_ptr<RFile>>& files) const {
 
     //add this dirs files
     files.insert(files.begin(), this->files.begin(), this->files.end());
@@ -272,7 +272,7 @@ RDirNode* RDirNode::getRoot() {
 }
 
 // note - you still need to delete the file yourself
-bool RDirNode::removeFile(RFile* f) {
+bool RDirNode::removeFile(std::shared_ptr<RFile> f) {
     //doesnt match this path at all
     if(f->path.find(abspath) != 0) {
         return false;
@@ -281,7 +281,7 @@ bool RDirNode::removeFile(RFile* f) {
     //is this dir - add to this node
     if(f->path.compare(abspath) == 0) {
 
-        for(std::vector<RFile*>::iterator it = files.begin(); it != files.end(); it++) {
+        for(auto it = files.begin(); it != files.end(); it++) {
             if((*it)==f) {
                 files.erase(it);
                 if(!f->isHidden()) visible_count--;
@@ -321,8 +321,8 @@ bool RDirNode::removeFile(RFile* f) {
 
 
 void RDirNode::printFiles() {
-    for(std::vector<RFile*>::iterator it = files.begin(); it != files.end(); it++) {
-        RFile* file = (*it);
+    for(auto it = files.begin(); it != files.end(); it++) {
+        std::shared_ptr<RFile> file = (*it);
         fprintf(stderr, "%s: %s %s\n", getPath().c_str(), file->fullpath.c_str() , file->isHidden() ? "hidden " : "");
     }
 }
@@ -374,7 +374,7 @@ std::string RDirNode::commonPathPrefix(const std::string & str) const{
     return str.substr(0,slash+1);
 }
 
-bool RDirNode::addFile(RFile* f) {
+bool RDirNode::addFile(std::shared_ptr<RFile> f) {
 
     //doesnt match this path at all
     if(f->path.find(abspath) != 0) {
@@ -433,8 +433,8 @@ bool RDirNode::addFile(RFile* f) {
     //that file is actually a directory - the file should be removed, and a directory with that path added
     //if this is the root node we do this regardless of if the file was added to a child node
 
-    for(std::vector<RFile*>::const_iterator it = files.begin(); it != files.end(); it++) {
-        RFile* file = (*it);
+    for(auto it = files.cbegin(); it != files.cend(); it++) {
+        std::shared_ptr<RFile> file = (*it);
 
         if(f->path.find(file->fullpath) == 0) {
             //fprintf(stderr, "removing %s as is actually the directory of %s\n", file->fullpath.c_str(), f->fullpath.c_str());
@@ -512,8 +512,8 @@ vec3 RDirNode::averageFileColour() const{
     vec3 av;
     int count = 0;
 
-    for(std::vector<RFile*>::const_iterator it = files.begin(); it != files.end(); it++) {
-        RFile* file = (*it);
+    for(auto it = files.cbegin(); it != files.cend(); it++) {
+        std::shared_ptr<RFile> file = (*it);
 
         if(file->isHidden()) continue;
 
@@ -551,8 +551,8 @@ void RDirNode::calcColour() {
 
     int fcount = 0;
 
-    for(std::vector<RFile*>::iterator it = files.begin(); it != files.end(); it++) {
-        RFile* file = (*it);
+    for(auto it = files.begin(); it != files.end(); it++) {
+        std::shared_ptr<RFile> file = (*it);
 
         if(file->isHidden()) continue;;
 
@@ -848,8 +848,8 @@ void RDirNode::updateFilePositions() {
 
     int files_left = visible_count;
 
-    for(std::vector<RFile*>::iterator it = files.begin(); it!=files.end(); it++) {
-        RFile* f = *it;
+    for(auto it = files.begin(); it!=files.end(); it++) {
+        std::shared_ptr<RFile> f = *it;
 
         if(f->isHidden()) {
             f->setDest(vec2(0.0,0.0));
@@ -904,8 +904,8 @@ void RDirNode::logic(float dt) {
     }
 
     //update files
-     for(std::vector<RFile*>::iterator it = files.begin(); it!=files.end(); it++) {
-         RFile* f = *it;
+     for(auto it = files.begin(); it!=files.end(); it++) {
+         std::shared_ptr<RFile> f = *it;
 
          f->logic(dt);
      }
@@ -962,8 +962,8 @@ void RDirNode::calcScreenPos(GLint* viewport, GLdouble* modelview, GLdouble* pro
     if(!gGourceSettings.hide_filenames) {
 
         //first pass - calculate positions of names
-        for(std::vector<RFile*>::const_iterator it = files.begin(); it!=files.end(); it++) {
-            RFile* f = *it;
+        for(auto it = files.cbegin(); it!=files.cend(); it++) {
+            std::shared_ptr<RFile> f = *it;
             f->calcScreenPos(viewport, modelview, projection);
         }
     }
@@ -983,8 +983,8 @@ void RDirNode::drawNames(FXFont& dirfont) {
     if(!gGourceSettings.hide_filenames) {
 
         if(!(gGourceSettings.hide_filenames || gGourceSettings.hide_files) && in_frustum) {
-            for(std::vector<RFile*>::const_iterator it = files.begin(); it!=files.end(); it++) {
-                RFile* f = *it;
+            for(auto it = files.cbegin(); it!=files.cend(); it++) {
+                std::shared_ptr<RFile> f = *it;
                 if(!f->isSelected()) f->drawName();
             }
         }
@@ -1015,8 +1015,8 @@ void RDirNode::drawShadows(float dt) const{
         glTranslatef(pos.x, pos.y, 0.0);
 
         //draw files
-        for(std::vector<RFile*>::const_iterator it = files.begin(); it!=files.end(); it++) {
-            RFile* f = *it;
+        for(auto it = files.cbegin(); it!=files.cend(); it++) {
+            std::shared_ptr<RFile> f = *it;
             if(f->isHidden()) continue;
 
             f->drawShadow(dt);
@@ -1035,8 +1035,8 @@ void RDirNode::updateFilesVBO(quadbuf& buffer, float dt) const{
 
     if(in_frustum) {
 
-        for(std::vector<RFile*>::const_iterator it = files.begin(); it!=files.end(); it++) {
-            RFile* f = *it;
+        for(auto it = files.cbegin(); it!=files.cend(); it++) {
+            std::shared_ptr<RFile> f = *it;
 
             if(f->isHidden()) continue;
 
@@ -1082,8 +1082,8 @@ void RDirNode::drawFiles(float dt) const{
 
             //draw files
 
-            for(std::vector<RFile*>::const_iterator it = files.begin(); it!=files.end(); it++) {
-                RFile* f = *it;
+            for(auto it = files.cbegin(); it!=files.cend(); it++) {
+                std::shared_ptr<RFile> f = *it;
                 if(f->isHidden()) continue;
 
                 f->draw(dt);

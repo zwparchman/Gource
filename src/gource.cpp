@@ -577,7 +577,7 @@ void Gource::selectUser(RUser* user) {
 }
 
 //select a file, deselect current file/user
-void Gource::selectFile(RFile* file) {
+void Gource::selectFile(std::shared_ptr<RFile> file) {
 
     //already selected do nothing
     if(file!=0 && selectedFile==file) return;
@@ -920,11 +920,6 @@ void Gource::reset() {
 
     users.clear();
 
-    //delete
-    for(std::map<std::string,RFile*>::iterator it = files.begin(); it != files.end(); it++) {
-        delete it->second;
-    }
-
     for(std::deque<RCaption*>::iterator it = captions.begin(); it!=captions.end();it++) {
         delete (*it);
     }
@@ -949,7 +944,7 @@ void Gource::reset() {
     commit_seq = 1;
 }
 
-void Gource::deleteFile(RFile* file) {
+void Gource::deleteFile(std::shared_ptr<RFile>& file) {
     //debugLog("removing file %s\n", file->fullpath.c_str());
 
     static TimerWriter timer("timing.txt", "Gource::deleteFile");
@@ -977,12 +972,10 @@ void Gource::deleteFile(RFile* file) {
     file_key.dec(file);
 
     //debugLog("removed file %s\n", file->fullpath.c_str());
-
-    delete file;
 }
 
 
-RFile* Gource::addFile(const RCommitFile& cf) {
+std::shared_ptr<RFile> Gource::addFile(const RCommitFile& cf) {
 
     //if we already have max files in circulation
     //we cant add any more
@@ -996,7 +989,8 @@ RFile* Gource::addFile(const RCommitFile& cf) {
 
     int tagid = tag_seq++;
 
-    RFile* file = new RFile(cf.filename, cf.colour, vec2(0.0,0.0), tagid);
+    std::shared_ptr<RFile> file = std::make_shared<RFile>(cf.filename, cf.colour, vec2(0.0,0.0), tagid);
+    gAllfiles[cf.filename] = std::weak_ptr(file);
 
     files[cf.filename] = file;
 
@@ -1035,6 +1029,9 @@ RUser* Gource::addUser(const std::string& username) {
 }
 
 void Gource::deleteUser(RUser* user) {
+    static TimerWriter timer("timing.txt", "Gource::deleteUser");
+    auto up = timer.getUpdater();
+
 
     if(hoverUser == user) {
         hoverUser = 0;
@@ -1171,7 +1168,7 @@ void Gource::processCommit(const RCommit& commit, float t) {
     for(std::vector<RCommitFile>::const_iterator it = commit.files.begin(); it != commit.files.end(); it++) {
 
         const RCommitFile& cf = *it;
-        RFile* file = 0;
+        std::shared_ptr<RFile> file = 0;
 
         //is this a directory (ends in slash)
         //deleting a directory - find directory: then for each file, remove each file
@@ -1194,12 +1191,12 @@ void Gource::processCommit(const RCommit& commit, float t) {
                 //fprintf(stderr, "deleting everything under %s because of %s\n", dir->getPath().c_str(), cf.filename.c_str());
 
                 //foreach dir files
-                std::vector<RFile*> dir_files;
+                std::vector<std::shared_ptr<RFile>> dir_files;
 
                 dir->getFilesRecursive(dir_files);
 
-                for(std::vector<RFile*>::iterator it = dir_files.begin(); it != dir_files.end(); it++) {
-                    RFile* file = *it;
+                for(auto it = dir_files.begin(); it != dir_files.end(); it++) {
+                    std::shared_ptr<RFile> file = *it;
 
                     addFileAction(commit, cf, file, t);
                 }
@@ -1208,10 +1205,10 @@ void Gource::processCommit(const RCommit& commit, float t) {
             continue;
         }
 
-        std::map<std::string, RFile*>::iterator seen_file = files.find(cf.filename);
+        auto seen_file = files.find(cf.filename);
         if(seen_file != files.end()) file = seen_file->second;
 
-        if(file == 0) {
+        if(!file){
             file = addFile(cf);
 
             if(!file) continue;
@@ -1221,7 +1218,7 @@ void Gource::processCommit(const RCommit& commit, float t) {
     }
 }
 
-void Gource::addFileAction(const RCommit& commit, const RCommitFile& cf, RFile* file, float t) {
+void Gource::addFileAction(const RCommit& commit, const RCommitFile& cf, std::shared_ptr<RFile> file, float t) {
     //create user if havent yet. do it here to ensure at least one of there files
     //was added (incase we hit gGourceSettings.max_files)
 
@@ -1341,6 +1338,9 @@ void Gource::updateBounds() {
 
 
 void Gource::updateUsers(float t, float dt) {
+    static TimerWriter timer("timing.txt", "Gource::updateUsers");
+    auto up = timer.getUpdater();
+
     std::vector<RUser*> inactiveUsers;
 
     size_t idle_users = 0;
@@ -1365,7 +1365,10 @@ void Gource::updateUsers(float t, float dt) {
         } else {
             //if nothing is selected, and this user is active and this user is the specified user to follow, select them
             if(selectedUser == 0 && selectedFile == 0) {
-                for(std::vector<std::string>::iterator ui = gGourceSettings.follow_users.begin(); ui != gGourceSettings.follow_users.end(); ui++) {
+                static TimerWriter timer("timing.txt", "Gource::updateUsers - find user to follow");
+                auto up = timer.getUpdater();
+                for(auto ui = gGourceSettings.follow_users.begin(); ui != gGourceSettings.follow_users.end(); ui++) {
+
                     std::string follow = *ui;
 
                     if(follow.size() && u->getName() == follow) {
@@ -1536,7 +1539,7 @@ void Gource::changeColours() {
         it->second->colourize();
     }
 
-    for(std::map<std::string,RFile*>::iterator it = files.begin(); it != files.end(); it++) {
+    for(auto it = files.begin(); it != files.end(); it++) {
         it->second->colourize();
     }
 
@@ -1711,7 +1714,7 @@ void Gource::logic(float t, float dt) {
     currtime += seconds;
 
     // delete files
-    for(std::vector<RFile*>::iterator it = gGourceRemovedFiles.begin(); it != gGourceRemovedFiles.end(); it++) {
+    for(auto it = gGourceRemovedFiles.begin(); it != gGourceRemovedFiles.end(); it++) {
         deleteFile(*it);
     }
 
@@ -1867,7 +1870,7 @@ void Gource::mousetrace(float dt) {
 
     //find user/file under mouse
 
-    RFile* fileSelection = 0;
+    std::shared_ptr<RFile> fileSelection = 0;
     RUser* userSelection = 0;
 
     if(!gGourceSettings.hide_users) {
@@ -1896,11 +1899,11 @@ void Gource::mousetrace(float dt) {
 
             RDirNode* dir = (RDirNode*) *it;
 
-            const std::vector<RFile*>* files = dir->getFiles();
+            const std::vector<std::shared_ptr<RFile>>* files = dir->getFiles();
 
-            for(std::vector<RFile*>::const_iterator fi = files->begin(); fi != files->end(); fi++) {
+            for(std::vector<std::shared_ptr<RFile>>::const_iterator fi = files->begin(); fi != files->end(); fi++) {
 
-                RFile* file = *fi;
+                std::shared_ptr<RFile> file = *fi;
 
                 if(!file->isHidden() && file->overlaps(projected_mouse)) {
                     fileSelection = file;

@@ -22,6 +22,8 @@
 #include <algorithm>
 #include "../logmill.h"
 
+#include "../Timing.h"
+
 #include "../core/utf8/utf8.h"
 
 std::string ICommitLog::filter_utf8(const std::string& str) {
@@ -198,6 +200,8 @@ float RCommitLog::getPercent() {
 }
 
 bool RCommitLog::findNextCommit(RCommit& commit, int attempts) {
+    static TimerWriter timer("timing.txt", "RCommitLog::findNextCommit");
+    auto up = timer.getUpdater();
 
     for(int i=0;i<attempts;i++) {
         RCommit c;
@@ -217,6 +221,8 @@ void RCommitLog::bufferCommit(RCommit& commit) {
 }
 
 bool RCommitLog::nextCommit(RCommit& commit, bool validate) {
+    static TimerWriter timer("timing.txt", "RcommitLog::nextCommit");
+    auto up = timer.getUpdater();
 
     if(buffered) {
         commit = lastCommit;
@@ -458,6 +464,10 @@ bool MultiCommitLog::getCommitAt(float percent, RCommit& commit){
 }
 
 bool MultiCommitLog::findNextCommit(RCommit& commit, int attempts){
+    static TimerWriter timer("timing.txt", "MultiCommitLog::findNextCommit");
+    auto up = timer.getUpdater();
+
+
     fprintf(stderr, "findNextCommit\n");
     for(int i=0; i<attempts*2; i++){
         if( nextCommit(commit, true) ){
@@ -468,6 +478,9 @@ bool MultiCommitLog::findNextCommit(RCommit& commit, int attempts){
 }
 
 bool MultiCommitLog::nextCommit(RCommit& commit, bool validate){
+    static TimerWriter timer("timing.txt", "MultiCommitLog::nextCommit");
+    auto up = timer.getUpdater();
+
     fprintf(stderr, "nextCommit\n");
     RCommit com;
 

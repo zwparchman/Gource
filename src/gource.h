@@ -23,6 +23,7 @@
 #include <vector>
 #include <deque>
 #include <fstream>
+#include <memory>
 
 #include "core/display.h"
 #include "core/shader.h"
@@ -98,8 +99,8 @@ class Gource : public SDLApp {
 
     GLint mouse_hits;
 
-    RFile* hoverFile;
-    RFile* selectedFile;
+    std::shared_ptr<RFile> hoverFile;
+    std::shared_ptr<RFile> selectedFile;
 
     RUser* hoverUser;
     RUser* selectedUser;
@@ -181,7 +182,7 @@ class Gource : public SDLApp {
 
     std::deque<RCommit> commitqueue;
     std::map<std::string, RUser*> users;
-    std::map<std::string, RFile*> files;
+    std::map<std::string, std::shared_ptr<RFile>> files;
     std::map<int, RUser*> tagusermap;
 
     std::deque<RCaption*> captions;
@@ -198,14 +199,14 @@ class Gource : public SDLApp {
     void reset();
 
     RUser* addUser(const std::string& username);
-    RFile* addFile(const RCommitFile& cf);
+    std::shared_ptr<RFile> addFile(const RCommitFile& cf);
 
     void deleteUser(RUser* user);
-    void deleteFile(RFile* file);
+    void deleteFile(std::shared_ptr<RFile>&file);
 
     void selectBackground();
     void selectUser(RUser* user);
-    void selectFile(RFile* file);
+    void selectFile(std::shared_ptr<RFile> file);
     void selectNextUser();
 
     void loadCaptions();
@@ -215,7 +216,7 @@ class Gource : public SDLApp {
     void logReadingError(const std::string& error);
 
     void processCommit(const RCommit& commit, float t);
-    void addFileAction(const RCommit& commit, const RCommitFile& cf, RFile* file, float t);
+    void addFileAction(const RCommit& commit, const RCommitFile& cf, std::shared_ptr<RFile> file, float t);
 
     std::string dateAtPosition(float percent);
 

@@ -209,7 +209,7 @@ void FileKey::clear() {
     interval_remaining = 0.0f;
 }
 
-void FileKey::inc(RFile* file) {
+void FileKey::inc(std::shared_ptr<RFile> file) {
 
     FileKeyEntry* entry = 0;
 
@@ -227,7 +227,7 @@ void FileKey::inc(RFile* file) {
 
 
 //decrement count of extension. if drops to zero, mark it for removal
-void FileKey::dec(RFile* file) {
+void FileKey::dec(std::shared_ptr<RFile> file) {
 
     std::map<std::string, FileKeyEntry*>::iterator result = keymap.find(file->ext);
 

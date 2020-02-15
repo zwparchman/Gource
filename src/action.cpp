@@ -17,7 +17,7 @@
 
 #include "action.h"
 
-RAction::RAction(RUser* source, RFile* target, time_t timestamp, float t, const vec3& colour)
+RAction::RAction(RUser* source, std::shared_ptr<RFile> target, time_t timestamp, float t, const vec3& colour)
     : colour(colour), source(source), target(target), timestamp(timestamp), t(t), progress(0.0f), rate(0.5f) {
 }
 
@@ -108,11 +108,11 @@ void RAction::draw(float dt) {
     glEnd();
 }
 
-RAction RAction::CreateAction(RUser* source, RFile* target, time_t timestamp, float t){
+RAction RAction::CreateAction(RUser* source, std::shared_ptr<RFile> target, time_t timestamp, float t){
     return RAction(source, target, timestamp, t, vec3(0.0f, 1.0f, 0.0f));
 }
 
-RAction RAction::RemoveAction(RUser* source, RFile* target, time_t timestamp, float t){
+RAction RAction::RemoveAction(RUser* source, std::shared_ptr<RFile> target, time_t timestamp, float t){
     RAction ret(source, target, timestamp, t, vec3(1.0f, 0.0f, 0.0f));
     ret.OnLogic = [=](RAction &action, float oldProgress, float dt) {
             if(oldProgress < 1.0 && action.progress >= 1.0) {
@@ -121,7 +121,7 @@ RAction RAction::RemoveAction(RUser* source, RFile* target, time_t timestamp, fl
         };
     return ret;
 }
-RAction RAction::ModifyAction(RUser* source, RFile* target, time_t timestamp, float t, const vec3& modify_colour){
+RAction RAction::ModifyAction(RUser* source, std::shared_ptr<RFile> target, time_t timestamp, float t, const vec3& modify_colour){
     RAction ret(source, target, timestamp, t, vec3(1.0f, 0.7f, 0.3f));
 
     ret.OnApply = [=](RAction &action){

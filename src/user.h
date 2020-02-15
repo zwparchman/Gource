@@ -18,6 +18,7 @@
 #ifndef RUSER_H
 #define RUSER_H
 
+
 #include "gource_settings.h"
 
 #include "pawn.h"
@@ -27,6 +28,8 @@
 #include "sys/stat.h"
 
 #include <list>
+#include <vector>
+#include <memory>
 
 class RAction;
 class RFile;
@@ -65,7 +68,7 @@ public:
 
     const std::string& getName() const;
 
-    void fileRemoved(RFile* f);
+    void fileRemoved(std::shared_ptr<RFile> f);
     void addAction(RAction& action);
 
     bool isIdle();

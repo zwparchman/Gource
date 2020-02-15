@@ -18,6 +18,8 @@
 #ifndef RDIRNODE_H
 #define RDIRNODE_H
 
+#include "memory"
+
 #include "core/sdlapp.h"
 #include "core/bounds.h"
 #include "core/quadtree.h"
@@ -44,7 +46,7 @@ class RDirNode : public QuadItem {
 
     RDirNode* parent;
     std::vector<RDirNode*> children;
-    std::vector<RFile*> files;
+    std::vector<std::shared_ptr<RFile>> files;
 
     SplineEdge spline;
 
@@ -139,8 +141,8 @@ public:
 
     bool isParent(RDirNode* node) const;
 
-    bool addFile(RFile* f);
-    bool removeFile(RFile* f);
+    bool addFile(std::shared_ptr<RFile> f);
+    bool removeFile(std::shared_ptr<RFile> f);
 
     int getDepth() const;
 
@@ -152,8 +154,8 @@ public:
     float getRadius() const;
     float getRadiusSqrt() const;
 
-    const std::vector<RFile*>* getFiles() const { return &files; };
-    void getFilesRecursive(std::vector<RFile*>& files) const;
+    const std::vector<std::shared_ptr<RFile>>* getFiles() const { return &files; };
+    void getFilesRecursive(std::vector<std::shared_ptr<RFile>>& files) const;
 
     vec3 averageFileColour() const;
 

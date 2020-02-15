@@ -63,6 +63,8 @@ public:
     RCommit();
     void debug();
     virtual bool parse(BaseLog* logf) { return false; };
+
+    virtual ~RCommit(){};
 };
 
 class ICommitLog {
