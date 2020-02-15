@@ -1,5 +1,6 @@
 #include <chrono>
 #include <string>
+#include <atomic>
 
 class TimerWriter ;
 
@@ -7,6 +8,7 @@ class TimerWriter {
     std::chrono::high_resolution_clock clock;
 
     std::chrono::duration<float> ranFor;
+    std::atomic<int> calls;
     std::string fileName;
     std::string heading;
 
