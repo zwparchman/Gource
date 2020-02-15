@@ -17,8 +17,12 @@
 
 #include "main.h"
 #include "git2.h"
+#include "Timing.h"
 
 int main(int argc, char *argv[]) {
+    static TimerWriter timer("timing.txt", "main");
+    auto up = timer.getUpdater();
+
     git_libgit2_init();
 
     std::string exepath;
