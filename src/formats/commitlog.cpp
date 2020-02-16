@@ -402,18 +402,13 @@ void RCommit::debug() {
 }
 
 MultiCommitLog::MultiCommitLog(const std::vector<std::unique_ptr<ILogMill>>& logs){
-    fprintf(stderr, "construct multi commit log\n");
     for(auto &log : logs )
     {
         if( ! log )  continue;
         ICommitLog* clog = log->getLog();
         if( ! clog ) continue;
 
-        logPack lp;
-        lp.log = clog;
-        lp.base = log->base;
-
-        queue.push(lp);
+        queue.push_back(clog);
     }
 }
 
@@ -421,31 +416,18 @@ MultiCommitLog::~MultiCommitLog(){
 }
 
 void MultiCommitLog::seekTo(float percent){
-    fprintf(stderr, "seekTo\n");
-    while(true) {
-        logPack lp = queue.top();
-        if( lp.lastCommit){
-            queue.pop();
-            lp.lastCommit = std::nullopt;
-            lp.log->seekTo(percent);
-            queue.push(lp);
-        }
-        else {
-            return;
-        }
-    }
+    //fprintf(stderr, "seekTo\n");
+    return;
 }
 
 bool MultiCommitLog::checkFormat(){
-    fprintf(stderr, "check format\n");
-    logPack lp = queue.top();
-    return lp.log->checkFormat();
+    //fprintf(stderr, "check format\n");
+    return true;
 }
 
 std::string MultiCommitLog::getLogCommand(){
-    fprintf(stderr, "get log command\n");
-    logPack lp = queue.top();
-    return lp.log->getLogCommand();
+    //fprintf(stderr, "get log command\n");
+    return "nope";
 }
 
 void MultiCommitLog::requireExecutable(const std::string &exename){
@@ -453,12 +435,12 @@ void MultiCommitLog::requireExecutable(const std::string &exename){
 }
 
 void MultiCommitLog::bufferCommit(RCommit& commit){
-    fprintf(stderr, "bufferCommit\n");
-    bufferedCommits.emplace(commit.timestamp,  commit);
+    //fprintf(stderr, "bufferCommit\n");
+    bufferedCommits.emplace(commit);
 }
 
 bool MultiCommitLog::getCommitAt(float percent, RCommit& commit){
-    fprintf(stderr, "getCommitAt\n");
+    //fprintf(stderr, "getCommitAt\n");
     seekTo(percent);
     return nextCommit(commit, true);
 }
@@ -468,7 +450,7 @@ bool MultiCommitLog::findNextCommit(RCommit& commit, int attempts){
     auto up = timer.getUpdater();
 
 
-    fprintf(stderr, "findNextCommit\n");
+    //fprintf(stderr, "findNextCommit\n");
     for(int i=0; i<attempts*2; i++){
         if( nextCommit(commit, true) ){
             return false;
@@ -481,51 +463,73 @@ bool MultiCommitLog::nextCommit(RCommit& commit, bool validate){
     static TimerWriter timer("timing.txt", "MultiCommitLog::nextCommit");
     auto up = timer.getUpdater();
 
-    fprintf(stderr, "nextCommit\n");
+    //fprintf(stderr, "MultiCommitLog::nextCommit\n");
     RCommit com;
 
     bool ret=false;
 
-    if(!bufferedCommits.empty() ){
-        commit = bufferedCommits.begin()->second;
-        bufferedCommits.erase(bufferedCommits.begin());
+    if( !queue.size() ) {
+        std::remove_if(fetching_packs.begin(), fetching_packs.end(),
+                       [](ICommitLog *log){ return log->isFinished(); });
+
+        for(ICommitLog * log: fetching_packs){
+            if( log->nextCommit(commit, validate) ){
+                return true;
+            }
+        }
+        return false;
+    } else {
+        auto split = std::partition(queue.begin(), queue.end(), 
+                                    [](ICommitLog * log) { return ! (log->isFinished() ||  log->isFetching()) ; });
+
+        fetching_packs.insert(fetching_packs.end(), split, queue.end());
+        queue.erase(split, queue.end());
+
+        if( !queue.size() ) {
+            return false;
+        }
+
+        int unready = std::count_if( queue.begin(), queue.end(),
+                     [](ICommitLog * log) { return ! log->hasBufferedCommit(); });
+        if( unready ) {
+            //fprintf(stderr, "[%i] logs are not ready\n", unready);
+            return false;
+        }
+
+        for(ICommitLog* log : queue ){
+            RCommit com;
+            if( log->nextCommit(com, validate)){
+                //fprintf(stderr, "MultiCommitLog::nextCommit - adding commit to bufferedCommits\n");
+                bufferedCommits.push(com);
+            } else {
+                //fprintf(stderr, "Failed to get commit even though a buffered one was claimed\n");
+            }
+        }
+
+        if( ! bufferedCommits.size() ) {
+            //fprintf(stderr, "bufferedCommits should not have been empty\n");
+            return false;
+        }
+
+        commit = bufferedCommits.top();
+        bufferedCommits.pop();
         return true;
     }
-
-    for(int i=0; i<queue.size() * 5  && !ret ; i++){
-        logPack lp = queue.top();
-        queue.pop();
-        if( lp.lastCommit ) {
-            commit = lp.lastCommit.value();
-            lp.lastCommit = std::nullopt;
-            ret = true;
-        }
-
-        if( lp.log->nextCommit(com, true)){
-            if( lp.base != "" ){
-                for(auto &file: com.files ){
-                    file.filename = lp.base + "/" + file.filename;
-                }
-            }
-            lp.lastCommit = com;
-        }
-
-        if( !lp.log->isFinished() ){
-            queue.push(lp);
-        }
-    }
-    return ret;
 }
 
+
 bool MultiCommitLog::hasBufferedCommit(){
-    bool ret = !!queue.top().lastCommit;
-    fprintf(stderr, "hasBufferedCommit <%i>. Q size <%i>\n", ret, (int) queue.size());
-    return ret; 
+    return false;
+//    if( queue.size() == 0 ) return false;
+//
+//    bool ret = !!queue.top().lastCommit;
+//    fprintf(stderr, "hasBufferedCommit <%i>. Q size <%i>\n", ret, (int) queue.size());
+//    return ret; 
 }
 
 bool MultiCommitLog::isFinished(){
-    bool ret = queue.empty();
-    fprintf(stderr, "isFinished <%i>\n", ret);
+    bool ret = queue.empty() && fetching_packs.empty();
+    //fprintf(stderr, "MultiCommitLog::isFinished <%i>\n", ret);
     return ret;
 }
 bool MultiCommitLog::isSeekable(){

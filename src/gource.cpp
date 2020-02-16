@@ -1134,7 +1134,7 @@ void Gource::readLog() {
         commitqueue.push_back(commit);
     }
 
-    if(first_read && commitqueue.empty()) {
+    if(!gGourceSettings.live && first_read && commitqueue.empty()) {
         throw SDLAppException("no commits found");
     }
 

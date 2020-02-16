@@ -21,6 +21,9 @@
 #include "commitlog.h"
 #include <git2.h>
 #include <memory>
+#include <unordered_set>
+#include "../Channel.hpp"
+#include <atomic>
 
 struct GitRepo {
     std::shared_ptr<git_repository*> ptr;
@@ -28,11 +31,12 @@ struct GitRepo {
     GitRepo(){};
 
     GitRepo(char const * location) :
-        ptr(new git_repository*, [](auto* g){ if( g ) git_repository_free(*g);delete g;})
+        ptr(new git_repository*, [](auto* g){ if( g && *g ) git_repository_free(*g);delete g;})
     {
         if(git_repository_open(&*ptr, location))
         {
-            ptr = nullptr;
+            *ptr = nullptr;
+            fprintf(stderr, "Git error %s\n", git_error_last()->message);
         }
     }
 };
@@ -45,11 +49,11 @@ struct GitRevWalker {
 
     GitRevWalker(GitRepo &repo) :
         repo(repo),
-        ptr(new git_revwalk*, [](auto* g){ if( g ) git_revwalk_free(*g);delete g;})
+        ptr(new git_revwalk*, [](auto* g){ if( g && *g) git_revwalk_free(*g);delete g;})
     {
-        if(git_revwalk_new(&*ptr, *repo.ptr) )
+        if((!*repo.ptr) || git_revwalk_new(&*ptr, *repo.ptr) )
         {
-            ptr = nullptr;
+            *ptr = nullptr;
         }
     }
 };
@@ -71,22 +75,43 @@ struct GitCommit {
     }
 };
 
-class GitCommitLog : public RCommitLog {
+class GitCommitLog : public ICommitLog{
 protected:
-    bool parseCommit(RCommit& commit);
     BaseLog* generateLog(const std::string& dir);
     static void readGitVersion();
+
+    std::shared_ptr<Channel<RCommit>> commitChannel;
+
+    std::atomic<bool> finished = false;
+    std::atomic<bool> fetching = false;
+
 public:
     GitCommitLog(const std::string& logfile);
     GitCommitLog(const GitCommitLog&)=delete;
 
-    
+    // from ICommitLog
+    virtual void seekTo(float percent);
+    virtual bool checkFormat();
+    virtual void requireExecutable(const std::string& exename);
+    virtual void bufferCommit(RCommit& commit);
+    virtual bool getCommitAt(float percent, RCommit& commit);
+    virtual bool findNextCommit(RCommit& commit, int attempts);
+    virtual bool nextCommit(RCommit& commit, bool validate = true);
+    virtual bool hasBufferedCommit();
+    virtual bool isFinished();
+    virtual bool isSeekable();
+    virtual float getPercent();
+    virtual std::string getLogCommand(){ return "nope"; }
+    virtual bool isFetching();
+
     static std::string logCommand();
 
     GitRepo repo;
-    GitRevWalker revWalker;
 
-    virtual ~GitCommitLog(){};
+    // std::thread< static void (*)(GitRepo , Channel<RCommit> )
+    std::thread commitFinder;
+
+    virtual ~GitCommitLog();
 };
 
 #endif

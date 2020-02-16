@@ -42,6 +42,7 @@ public:
     bool hide_mouse;
     bool hide_root;
     bool multi_repo;
+    bool live;
 
     bool disable_auto_rotate;
 

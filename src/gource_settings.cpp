@@ -119,6 +119,7 @@ if(extended_help) {
 
     printf("  --disable-input          Disable keyboard and mouse input\n\n");
     printf("  --multi-repo          Multiple repos at once\n\n");
+    printf("  --live                Update the repo(s) on to keep up with their current status\n\n");
 
     printf("  --date-format FORMAT     Specify display date string (strftime format)\n\n");
 
@@ -276,6 +277,7 @@ GourceSettings::GourceSettings() {
     arg_types["disable-auto-skip"]   = "bool";
     arg_types["disable-input"]       = "bool";
     arg_types["multi-repo"]          = "bool";
+    arg_types["live"]                = "bool";
 
     arg_types["git-log-command"]= "bool";
     arg_types["cvs-exp-command"]= "bool";
@@ -396,6 +398,7 @@ void GourceSettings::setGourceDefaults() {
 
     disable_input = false;
     multi_repo = false;
+    live = false;
 
     auto_skip_seconds = 3.0f;
     days_per_second   = 0.1f; // TODO: check this is right
@@ -702,6 +705,9 @@ void GourceSettings::importGourceSettings(ConfFile& conffile, ConfSection* gourc
         multi_repo=true;
     }
 
+    if(gource_settings->getBool("live")) {
+        live=true;
+    }
 
     if(gource_settings->getBool("loop")) {
         loop = true;
@@ -1587,22 +1593,27 @@ void GourceSettings::importGourceSettings(ConfFile& conffile, ConfSection* gourc
         default_path = false;
     }
 
+    if( multi_repo ) 
+    {
+        std::string acc;
+        for(char c: path){
+            if( c == ',' ) {
+                paths.push_back(acc);
+                acc.clear();
+            }
+            else
+            {
+                acc += c;
+            }
+        }
+        paths.push_back(acc);
+    }
+
     // todo better
+#if 0
     paths.push_back("/home/zack/src/raylib/");
     paths.push_back("/home/zack/src/Gource/");
     paths.push_back("/home/zack/src/SDL");
-    paths.push_back("/home/zack/src/KeyV2");
-    paths.push_back("/home/zack/src/Prusa3");
-    paths.push_back("/home/zack/src/WaveFunctionCollapse");
-    paths.push_back("/home/zack/src/aseprite");
-    paths.push_back("/home/zack/src/evtest-qt");
-    paths.push_back("/home/zack/src/ncollide");
-    paths.push_back("/home/zack/src/nphysics");
-    paths.push_back("/home/zack/src/poky");
-    paths.push_back("/home/zack/src/wxWidgets");
-    paths.push_back("/home/zack/src/x52pro-linux");
-    paths.push_back("/home/zack/src/youtube-dl");
-#if 0
 #endif
 
     if(path == "-") {
@@ -1633,7 +1644,7 @@ void GourceSettings::importGourceSettings(ConfFile& conffile, ConfSection* gourc
         }
 
         // check path exists
-        if(!boost::filesystem::exists(path)) {
+        if(!multi_repo && !boost::filesystem::exists(path)) {
             throw ConfFileException(str(boost::format("'%s' does not appear to be a valid file or directory") % path), "", 0);
         }
     }

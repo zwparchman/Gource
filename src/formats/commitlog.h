@@ -67,6 +67,18 @@ public:
     virtual ~RCommit(){};
 };
 
+inline bool operator>(const RCommit &a, const RCommit &b) {
+    time_t at =0, bt=0;
+    at = a.timestamp;
+    bt = b.timestamp;
+
+    if( at == bt ) {
+        return a.username > b.username;
+    }
+
+    return at > bt;
+}
+
 class ICommitLog {
 public:
     virtual ~ICommitLog(){}
@@ -85,6 +97,7 @@ public:
     virtual bool isFinished() = 0;
     virtual bool isSeekable() = 0;
     virtual float getPercent() = 0;
+    virtual bool isFetching () { return false; }
 };
 
 
@@ -139,7 +152,7 @@ public:
 
 class MultiCommitLog : public ICommitLog {
 
-    std::multimap<time_t, RCommit> bufferedCommits;
+    std::priority_queue<RCommit, std::vector<RCommit>, std::greater<RCommit>> bufferedCommits;
 
     virtual bool parseCommit(RCommit& commit) { return false; };
 
@@ -151,7 +164,9 @@ public:
         std::optional<RCommit> lastCommit;
     };
 private:
-    std::priority_queue<logPack, std::vector<logPack> , std::greater<logPack> > queue;
+    //std::priority_queue<logPack, std::vector<logPack> , std::greater<logPack> > queue;
+    std::vector<ICommitLog *> queue;
+    std::vector<ICommitLog *> fetching_packs;
 public:
 
 
@@ -195,7 +210,12 @@ inline bool operator>(const MultiCommitLog::logPack &a, const MultiCommitLog::lo
 
     if( at > bt ) return true;
     if( at < bt ) return false;
+
+    if( ! a.log->isFetching() && b.log->isFetching() ) return false;
+    if( a.log->isFetching() && ! b.log->isFetching() ) return true;
+
     return a.base > b.base;
 }
+
 
 #endif

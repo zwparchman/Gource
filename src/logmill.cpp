@@ -341,7 +341,9 @@ ICommitLog* RLogMill::fetchLog(std::string& log_format) {
 MultiLogMill::~MultiLogMill(){}
 
 MultiLogMill::MultiLogMill(const std::vector<std::string> &logs){
+    fprintf(stderr, "construct multi log mill for size [%i]\n", (int) logs.size() );
     for( auto& log: logs ){
+        fprintf(stderr, "make log mill for [%s]\n", log.c_str() );
         mills.push_back( std::make_unique<RLogMill>(log));
         mills.back()->base = log+"/";
     }
