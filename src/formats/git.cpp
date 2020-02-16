@@ -235,8 +235,9 @@ static void PushCommits(
 }
 
 GitCommitLog::GitCommitLog(const std::string& logfile):
-    repo( logfile.c_str())
-    ,commitChannel(std::make_shared<Channel<RCommit>>())
+    logfileName(logfile)
+    ,repo( logfile.c_str())
+    ,commitChannel(std::make_shared<Channel<RCommit>>(20))
     ,commitFinder(PushCommits, *repo.ptr, &*commitChannel, &fetching, logfile)
 {
     //can generate log from directory
@@ -273,6 +274,10 @@ bool GitCommitLog::isFinished(){
 }
 
 bool GitCommitLog::isFetching(){
+    if( fetching != wasFetching ) {
+        printf("[%s] going into fetching mode [%i]\n", logfileName.c_str(), (int) fetching);
+        wasFetching = fetching;
+    }
     return fetching;
 }
 

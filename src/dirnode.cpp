@@ -86,7 +86,7 @@ void RDirNode::changePath(const std::string & abspath) {
 
 RDirNode::~RDirNode() {
     for(std::vector<RDirNode*>::iterator it = children.begin(); it != children.end(); it++) {
-        delete (*it);
+        //delete (*it);
     }
 
     gGourceDirMap.erase(abspath);
@@ -308,7 +308,7 @@ bool RDirNode::removeFile(std::shared_ptr<RFile> f) {
             if(node->noFiles() && node->noDirs()) {
                 children.erase(it);
                 //fprintf(stderr, "deleting node %s from %s\n", node->getPath().c_str(), getPath().c_str());
-                delete node;
+                //delete node;
                 nodeUpdated(false);
             }
 

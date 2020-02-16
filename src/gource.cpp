@@ -1132,6 +1132,7 @@ void Gource::readLog() {
         }
 
         commitqueue.push_back(commit);
+        break; // lets try one commit per frame max
     }
 
     if(!gGourceSettings.live && first_read && commitqueue.empty()) {

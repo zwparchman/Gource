@@ -84,6 +84,7 @@ protected:
 
     std::atomic<bool> finished = false;
     std::atomic<bool> fetching = false;
+    bool wasFetching = false;
 
 public:
     GitCommitLog(const std::string& logfile);
@@ -105,6 +106,7 @@ public:
     virtual bool isFetching();
 
     static std::string logCommand();
+    std::string logfileName;
 
     GitRepo repo;
 
