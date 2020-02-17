@@ -1,4 +1,5 @@
 Experimental buggy changes to view multiple repositories
+as of now you need the --multi-repo and --live options for all actions and only git repos are tested
 
                              Gource
 
