@@ -60,12 +60,15 @@ struct Channel {
     if(wait){
       cv.wait(lock, [&](){ return closed || !lst.empty(); });
     }
-    if(lst.empty()) return false; 
+    if(lst.empty()) {
+        cv.notify_all();
+        return false; 
+    }
 
     out = std::move(lst.front());
 
     lst.pop_front();
-    cv.notify_one();
+    cv.notify_all();
     return true;
   }
 

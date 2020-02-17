@@ -72,7 +72,7 @@ static void PushCommits(
                 //fprintf(stderr, "Failed to build the revWalker: %s", git_error_last()->message);
                 continue;
             }
-            git_revwalk_sorting(revWalker, GIT_SORT_TOPOLOGICAL | GIT_SORT_REVERSE);
+            git_revwalk_sorting(revWalker, GIT_SORT_TOPOLOGICAL | GIT_SORT_TIME | GIT_SORT_REVERSE);
             if( git_revwalk_push_glob(revWalker, "*") ){
                 continue;
             }
@@ -96,7 +96,7 @@ static void PushCommits(
                     if( fetching ) {
                         *fetching = true;
                     }
-                    usleep(1000);
+                    usleep(1000000); // usleep is in microseconds
                     if( git_revwalk_push_glob(revWalker, "*") ){
                         continue;
                     }
@@ -237,7 +237,7 @@ static void PushCommits(
 GitCommitLog::GitCommitLog(const std::string& logfile):
     logfileName(logfile)
     ,repo( logfile.c_str())
-    ,commitChannel(std::make_shared<Channel<RCommit>>(20))
+    ,commitChannel(std::make_shared<Channel<RCommit>>())
     ,commitFinder(PushCommits, *repo.ptr, &*commitChannel, &fetching, logfile)
 {
     //can generate log from directory

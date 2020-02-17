@@ -18,6 +18,7 @@
 #include "gource.h"
 #include "core/png_writer.h"
 #include "Timing.h"
+#include <execution>
 
 bool  gGourceDrawBackground  = true;
 bool  gGourceQuadTreeDebug   = false;
@@ -1132,7 +1133,7 @@ void Gource::readLog() {
         }
 
         commitqueue.push_back(commit);
-        break; // lets try one commit per frame max
+        //break; // lets try one commit per frame max
     }
 
     if(!gGourceSettings.live && first_read && commitqueue.empty()) {
@@ -1285,7 +1286,7 @@ void Gource::interactUsers() {
         max_depth = gGourceMaxQuadTreeDepth;
     }
 
-    userTree = new QuadTree(quadtreebounds, max_depth, 1);
+    userTree = new QuadTree(quadtreebounds, max_depth, 32);
 
     for(std::map<std::string,RUser*>::iterator it = users.begin(); it!=users.end(); it++) {
         RUser* user = it->second;
@@ -1346,11 +1347,19 @@ void Gource::updateUsers(float t, float dt) {
 
     size_t idle_users = 0;
 
+    {
+        static TimerWriter timer("timing.txt", "Gource::updateUsers - do logic");
+        auto up = timer.getUpdater();
+        std::for_each(std::execution::par, users.begin(), users.end(), [=](auto& pair){
+            RUser* user = pair.second;
+
+            user->logic(t, dt);
+        });
+    }
+
     // move users
     for(std::map<std::string,RUser*>::iterator it = users.begin(); it!=users.end(); it++) {
         RUser* u = it->second;
-
-        u->logic(t, dt);
 
         //deselect user if fading out from inactivity
         if(u->isFading() && selectedUser == u) {
@@ -1416,7 +1425,7 @@ void Gource::interactDirs() {
         max_depth = gGourceMaxQuadTreeDepth;
     }
 
-    dirNodeTree = new QuadTree(quadtreebounds, max_depth, 1);
+    dirNodeTree = new QuadTree(quadtreebounds, max_depth, 32);
 
     //apply forces with other directories
     for(std::map<std::string,RDirNode*>::iterator it = gGourceDirMap.begin(); it!=gGourceDirMap.end(); it++) {
@@ -1548,6 +1557,9 @@ void Gource::changeColours() {
 }
 
 void Gource::logic(float t, float dt) {
+    static TimerWriter timer("timing.txt", "Gource::logic");
+    auto updater = timer.getUpdater();
+
 
     if(gGourceSettings.shutdown && logmill->isFinished()) {
         appFinished=true;
@@ -1681,6 +1693,7 @@ void Gource::logic(float t, float dt) {
     }
 
     // get more entries
+    commit_get_time = SDL_GetTicks();
     if(commitqueue.empty()) {
         readLog();
     }
@@ -1700,6 +1713,7 @@ void Gource::logic(float t, float dt) {
 
         loadCaptions();
     }
+    commit_get_time = SDL_GetTicks() - commit_get_time;
 
     //set current time
     float time_inc = (dt * 86400.0 * gGourceSettings.days_per_second);
@@ -1714,45 +1728,54 @@ void Gource::logic(float t, float dt) {
 
     currtime += seconds;
 
-    // delete files
-    for(auto it = gGourceRemovedFiles.begin(); it != gGourceRemovedFiles.end(); it++) {
-        deleteFile(*it);
+    {
+        static TimerWriter timer("timing.txt", "Gource::logic - delete files");
+        auto up = timer.getUpdater();
+        // delete files
+        for(auto it = gGourceRemovedFiles.begin(); it != gGourceRemovedFiles.end(); it++) {
+            deleteFile(*it);
+        }
     }
 
     gGourceRemovedFiles.clear();
 
 
     //add commits up until the current time
-    while(!commitqueue.empty()) {
+    {
+        static TimerWriter timer("timing.txt", "Gource::logic - get commits");
+        auto up = timer.getUpdater();
 
-        RCommit commit = commitqueue.front();
+        while(!commitqueue.empty()) {
 
-        //auto skip ahead, unless stop_position_reached
-        if(gGourceSettings.auto_skip_seconds>=0.0 && idle_time >= gGourceSettings.auto_skip_seconds && !stop_position_reached) {
-            currtime = lasttime = commit.timestamp;
-            idle_time = 0.0;
-        }
+            RCommit commit = commitqueue.front();
 
-        if(commit.timestamp > currtime) break;
+            //auto skip ahead, unless stop_position_reached
+            if(gGourceSettings.auto_skip_seconds>=0.0 && idle_time >= gGourceSettings.auto_skip_seconds && !stop_position_reached) {
+                currtime = lasttime = commit.timestamp;
+                idle_time = 0.0;
+            }
 
-        processCommit(commit, t);
+            if(commit.timestamp > currtime) break;
 
-        if(gGourceSettings.no_time_travel) {
-            if(commit.timestamp > lasttime) {
+            processCommit(commit, t);
+
+            if(gGourceSettings.no_time_travel) {
+                if(commit.timestamp > lasttime) {
+                    lasttime = commit.timestamp;
+                }
+
+            } else {
+                // allow for non linear time lines
+                if(lasttime > commit.timestamp) {
+                    currtime = commit.timestamp;
+                }
                 lasttime = commit.timestamp;
             }
 
-        } else {
-            // allow for non linear time lines
-            if(lasttime > commit.timestamp) {
-                currtime = commit.timestamp;
-            }
-            lasttime = commit.timestamp;
+            subseconds = 0.0;
+
+            commitqueue.pop_front();
         }
-
-        subseconds = 0.0;
-
-        commitqueue.pop_front();
     }
 
     slider.resize();
@@ -1827,18 +1850,23 @@ void Gource::logic(float t, float dt) {
         active_captions.push_back(caption);
     }
 
-    for(std::vector<RCaption*>::iterator it = active_captions.begin(); it!=active_captions.end();) {
-         RCaption* caption = *it;
+    {
+        static TimerWriter timer("timing.txt", "Gource::logic - caption logic ");
+        auto up = timer.getUpdater();
 
-         caption->logic(dt);
+        for(std::vector<RCaption*>::iterator it = active_captions.begin(); it!=active_captions.end();) {
+             RCaption* caption = *it;
 
-         if(caption->isFinished()) {
-             it = active_captions.erase(it);
-             delete caption;
-             continue;
-         }
+             caption->logic(dt);
 
-         it++;
+             if(caption->isFinished()) {
+                 it = active_captions.erase(it);
+                 delete caption;
+                 continue;
+             }
+
+             it++;
+        }
     }
 
     //reset loop counters
@@ -1848,11 +1876,22 @@ void Gource::logic(float t, float dt) {
 
     updateBounds();
 
-    interactUsers();
-    updateUsers(t, dt);
+    {
+        static TimerWriter timer("timing.txt", "Gource::logic - update users");
+        auto up = timer.getUpdater();
 
-    interactDirs();
-    updateDirs(dt);
+
+        interactUsers();
+        updateUsers(t, dt);
+    }
+
+    {
+        static TimerWriter timer("timing.txt", "Gource::logic - update dirs");
+        auto up = timer.getUpdater();
+
+        interactDirs();
+        updateDirs(dt);
+    }
 
     updateCamera(dt);
 

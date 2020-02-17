@@ -47,7 +47,6 @@ RUser::RUser(const std::string& name, vec2 pos, int tagid) : Pawn(name,pos,tagid
 
     min_units_ps = 100.0;
 
-    actionCount = activeCount = 0;
 }
 
 void RUser::addAction(RAction& action) {
@@ -58,7 +57,6 @@ void RUser::addAction(RAction& action) {
     //name_interval = name_interval > 0.0 ? std::max(name_interval,nametime-1.0f) : nametime;
 
     actions.push_back(action);
-    actionCount++;
 }
 
 // remove references to this file
@@ -66,10 +64,8 @@ void RUser::fileRemoved(std::shared_ptr<RFile> f) {
     auto equals = [=](auto& it){ return it.target == f; };
 
     std::remove_if(actions.begin(), actions.end(), equals);
-    actionCount = actions.size();
 
     std::remove_if(activeActions.begin(), activeActions.end(), equals);
-    activeCount = activeActions.size();
 }
 
 void RUser::applyForceUser(RUser* u) {
@@ -210,11 +206,11 @@ void RUser::assignUserImage() {
 }
 
 int RUser::getActionCount() {
-    return actionCount + activeCount;
+    return actions.size() + activeActions.size();
 }
 
 int RUser::getPendingActionCount() {
-    return actionCount;
+    return actions.size();
 }
 
 void RUser::logic(float t, float dt) {
@@ -232,40 +228,43 @@ void RUser::logic(float t, float dt) {
     }
 
     //add next active action, if it is in range
-    for(auto it = actions.begin(); it != actions.end();) {
+    {
         static TimerWriter timer("timing.txt", "RUser::logic - juggle actions");
         auto up = timer.getUpdater();
 
-        RAction& action = *it;
+        auto split = std::partition(actions.begin(), actions.end(),
+                                    [&](RAction& action){ 
+                                        bool ret = gGourceSettings.max_file_lag>=0.0 
+                                            && action.t < t - gGourceSettings.max_file_lag;
+                                        if ( ret ) action.rate = 2;
+                                        return !ret;
+                                    });
 
-        //add all files which are too old
-        if(gGourceSettings.max_file_lag>=0.0 && action.t < t - gGourceSettings.max_file_lag) {
-            activeActions.push_back(action);
-            it = actions.erase(it);
-            actionCount--;
-            action.rate = 2.0;
-            activeCount++;
-            continue;
+        std::move(split, actions.end(), std::back_inserter(activeActions));
+        actions.erase(split, actions.end());
+
+        for(auto it = actions.begin(); it != actions.end();) {
+
+            RAction& action = *it;
+
+            if(!find_nearby_action) break;
+
+            float action_dist = glm::length(action.target->getAbsolutePos() - pos);
+
+            //queue first action in range
+            if(action_dist < gGourceBeamDist) {
+                activeActions.push_back(action);
+                it = actions.erase(it);
+                break;
+            }
+
+            it++;
         }
-
-        if(!find_nearby_action) break;
-
-        float action_dist = glm::length(action.target->getAbsolutePos() - pos);
-
-        //queue first action in range
-        if(action_dist < gGourceBeamDist) {
-            activeActions.push_back(action);
-            it = actions.erase(it);
-            actionCount--; activeCount++;
-            break;
-        }
-
-        it++;
     }
 
     //reset action interval
     if(action_interval <= 0) {
-        int total_actions = actionCount + activeCount;
+        int total_actions = actions.size() + activeActions.size();
 
         action_interval = total_actions ? (1.0 / (float)total_actions) : 1.0;
     }
@@ -275,20 +274,21 @@ void RUser::logic(float t, float dt) {
         auto up = timer.getUpdater();
         //update actions
         for(auto it = activeActions.begin(); it != activeActions.end(); ) {
-
-
             RAction& action = *it;
 
-            action.logic(dt);
-
-            if(action.isFinished()) {
-                it = activeActions.erase(it);
-                activeCount--;
-                continue;
+            if( action.isFinished() ) {
             }
 
             it++;
         }
+
+        auto split = std::partition(activeActions.begin(), activeActions.end(),
+                       [=](RAction &action){ 
+                           action.logic(dt); 
+                           return action.isFinished();
+                       });
+
+        activeActions.erase(split, activeActions.end());
 
         if(glm::length2(accel) > speed * speed) {
             accel = normalise(accel) * speed;

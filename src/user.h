@@ -40,8 +40,6 @@ class RUser : public Pawn {
 
     std::vector<RAction> actions;
     std::vector<RAction> activeActions;
-    size_t actionCount;
-    size_t activeCount;
 
     float action_interval;
     float action_dist;

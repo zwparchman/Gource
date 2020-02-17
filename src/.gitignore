@@ -1,1 +1,13 @@
 *.o
+../1
+../f
+../ff
+../fontconfig/
+../gource.srctrlbm
+../gource.srctrldb
+../gource.srctrlprj
+../perf.data
+../perf.data.old
+2019-11-09-134038_1920x1080_scrot.png
+timing.txt
+../timing.txt

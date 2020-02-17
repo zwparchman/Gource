@@ -166,6 +166,8 @@ class Gource : public SDLApp {
     Uint32 update_user_tree_time;
     Uint32 draw_scene_time;
     Uint32 logic_time;
+    Uint32 user_update_time;
+    Uint32 commit_get_time;
     Uint32 trace_time;
     Uint32 text_time;
     Uint32 text_update_time;
