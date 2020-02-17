@@ -1593,7 +1593,7 @@ void GourceSettings::importGourceSettings(ConfFile& conffile, ConfSection* gourc
         default_path = false;
     }
 
-    if( multi_repo ) 
+    if( multi_repo && !paths.size()) 
     {
         std::string acc;
         for(char c: path){
@@ -1610,12 +1610,6 @@ void GourceSettings::importGourceSettings(ConfFile& conffile, ConfSection* gourc
     }
 
     // todo better
-#if 0
-    paths.push_back("/home/zack/src/raylib/");
-    paths.push_back("/home/zack/src/Gource/");
-    paths.push_back("/home/zack/src/SDL");
-#endif
-
     if(path == "-") {
 
         if(log_format.size() == 0) {
