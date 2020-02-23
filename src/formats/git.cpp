@@ -19,7 +19,7 @@
 #include "../gource_settings.h"
 #include "git.h"
 #include <unistd.h>
-
+#include "../gource.h"
 #include "../Timing.h"
 
 // parse git log entries
@@ -45,8 +45,8 @@ static void PushCommits(
                         std::string prefix){
     prefix += "/";
     usleep(1000);
-//    static TimerWriter timer("timing.txt", "git.cpp:PushCommits");
-//    auto up = timer.getUpdater();
+    static TimerWriter timer("timing.txt", "git.cpp:PushCommits");
+    auto up = timer.getUpdater();
     if( ! chan ) {
         //fprintf(stderr, "PushCommits must have a Channel to communicate\n");
         return;
@@ -63,8 +63,8 @@ static void PushCommits(
     std::unordered_set<std::string> seen;
 
     while( ! chan->is_closed()) {
-//        static TimerWriter timer("timing.txt", "git.cpp:PushCommits - main loop");
-//        auto up = timer.getUpdater();
+        static TimerWriter timer("timing.txt", "git.cpp:PushCommits - main loop");
+        auto up = timer.getUpdater();
 
         RCommit ocommit;
         if( !revWalker) {
@@ -86,8 +86,8 @@ static void PushCommits(
 
         git_oid nxt;
         {
-//            static TimerWriter timer("timing.txt", "git.cpp:PushCommits - revwalk_next");
-//            auto up = timer.getUpdater();
+            static TimerWriter timer("timing.txt", "git.cpp:PushCommits - revwalk_next");
+            auto up = timer.getUpdater();
 
             if( int err = git_revwalk_next( &nxt, revWalker) ){
                 if( err == GIT_ITEROVER ) {
@@ -106,16 +106,16 @@ static void PushCommits(
                 continue;
             }
             {
-//                static TimerWriter timer("timing.txt", "git.cpp:PushCommits - hide current oid");
-//                auto up = timer.getUpdater();
+                static TimerWriter timer("timing.txt", "git.cpp:PushCommits - hide current oid");
+                auto up = timer.getUpdater();
 
                 git_revwalk_hide(revWalker, &nxt);
             }
 
 
             {
-//                static TimerWriter timer("timing.txt", "git.cpp:PushCommits - add oid to seen");
-//                auto up = timer.getUpdater();
+                static TimerWriter timer("timing.txt", "git.cpp:PushCommits - add oid to seen");
+                auto up = timer.getUpdater();
 
                 std::string asString;
                 char buffer[GIT_OID_HEXSZ+1];
@@ -132,8 +132,8 @@ static void PushCommits(
 
         git_object * obj;
         {
-//            static TimerWriter timer("timing.txt", "git.cpp:PushCommits - object lookup");
-//            auto up = timer.getUpdater();
+            static TimerWriter timer("timing.txt", "git.cpp:PushCommits - object lookup");
+            auto up = timer.getUpdater();
 
 
             if( git_object_lookup(&obj, repo, &nxt, GIT_OBJECT_ANY) ){
@@ -146,15 +146,20 @@ static void PushCommits(
         auto type = git_object_type(obj);
         if( type == GIT_OBJ_COMMIT ) {
             git_commit * commit = (git_commit*)obj;
-//            static TimerWriter timer("timing.txt", "git.cpp:PushCommits - gather commit data");
-//            auto up = timer.getUpdater();
+            static TimerWriter timer("timing.txt", "git.cpp:PushCommits - gather commit data");
+            auto up = timer.getUpdater();
 
             std::vector<git_commit*> parents;
             int pcount = git_commit_parentcount(commit);
             parents.resize(  pcount );
 
-            for(int i=0; i<(int)parents.size(); i++){
-                git_commit_parent(&(parents[i]), commit, i);
+            {
+                static TimerWriter timer("timing.txt", "git.cpp:PushCommits - get parrents");
+                auto up = timer.getUpdater();
+
+                for(int i=0; i<(int)parents.size(); i++){
+                    git_commit_parent(&(parents[i]), commit, i);
+                }
             }
 
             const git_signature * sig = git_commit_author(commit);
@@ -166,8 +171,8 @@ static void PushCommits(
             git_diff *diff = nullptr;
             git_tree *ctree = nullptr, *ptree = nullptr;
             {
-//                static TimerWriter timer("timing.txt", "git.cpp:PushCommits - tree gathering");
-//                auto up = timer.getUpdater();
+                static TimerWriter timer("timing.txt", "git.cpp:PushCommits - tree gathering");
+                auto up = timer.getUpdater();
 
                 if( git_commit_tree(&ctree, commit) ) {
                     printf("Error getting commit tree\n");
@@ -187,8 +192,11 @@ static void PushCommits(
 
             //do the tree walk to find modified files.
             {
-//                static TimerWriter timer("timing.txt", "git.cpp:PushCommits - diff tree walking");
-//                auto up = timer.getUpdater();
+                // this could be done in parallel.
+                // The initial idea for that would be to enumerate each of these tree walks into 
+                // a Channel and only use them in numerical order.
+                static TimerWriter timer("timing.txt", "git.cpp:PushCommits - diff tree walking");
+                auto up = timer.getUpdater();
 
                 struct Pack {
                     RCommit *commit;
@@ -276,6 +284,7 @@ bool GitCommitLog::isFinished(){
 bool GitCommitLog::isFetching(){
     if( fetching != wasFetching ) {
         printf("[%s] going into fetching mode [%i]\n", logfileName.c_str(), (int) fetching);
+        toast_system.addToast(logfileName +" is now in fetching mode");
         wasFetching = fetching;
     }
     return fetching;

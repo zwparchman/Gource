@@ -14,6 +14,8 @@ float Toast::element::getAlpha(){
 }
 
 void Toast::draw(float dt, vec2 location, float scale, FXFont& font){
+    auto lock = std::lock_guard(mut);
+
     auto split = std::remove_if(toasts.begin(), toasts.end(), [](element &t) { return t.isFinished(); });
     toasts.erase(split, toasts.end());
 
@@ -26,9 +28,11 @@ void Toast::draw(float dt, vec2 location, float scale, FXFont& font){
         font.setAlpha(td.getAlpha());
         font.draw(curPos.x, curPos.y, td.str);
     }
-
 }
 
 void Toast::addToast(const std::string & str, float toastTime){
+
+    auto lock = std::lock_guard(mut);
+
     toasts.emplace_back(str, toastTime);
 }

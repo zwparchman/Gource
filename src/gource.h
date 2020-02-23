@@ -54,6 +54,7 @@
 #include "toast.h"
 
 
+extern Toast toast_system;
 
 class Gource : public SDLApp {
     std::string logfile;
@@ -190,7 +191,6 @@ class Gource : public SDLApp {
     std::map<std::string, RUser*> users;
     std::map<std::string, std::shared_ptr<RFile>> files;
     std::map<int, RUser*> tagusermap;
-    Toast toast_system;
 
     std::deque<RCaption*> captions;
     std::vector<RCaption*> active_captions;

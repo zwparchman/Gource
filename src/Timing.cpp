@@ -4,6 +4,10 @@
 #include <fstream>
 #include <atomic>
 #include <sstream>
+#include <iomanip>
+
+
+
 TimerWriter::Updater::Updater( TimerWriter &parrent): parrent(parrent) {
     start = parrent.clock.now();
 }
@@ -29,7 +33,7 @@ TimerWriter::~TimerWriter(){
         std::ofstream ofile(fileName, std::ios_base::app );
 
         std::stringstream ss;
-        ss << ticks <<": calls: " << calls << ": " <<  heading;
+        ss << std::setw(15) << ticks <<": calls: " << std::setw(11) << calls << ": " <<  heading;
 
         ofile << ss.str() << std::endl;
         std::cout << ss.str() <<std::endl;

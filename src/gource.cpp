@@ -26,6 +26,9 @@ int   gGourceMaxQuadTreeDepth = 6;
 
 int gGourceUserInnerLoops = 0;
 
+
+Toast toast_system;
+
 Gource::Gource(FrameExporter* exporter) {
 
     this->logfile = gGourceSettings.path;
