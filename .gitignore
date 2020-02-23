@@ -24,3 +24,12 @@ logs/*
 *.d
 .deps
 .dirstamp
+cachegrind.out*
+callgrind.out*
+fontconfig/
+gource.srctrlbm
+gource.srctrldb
+gource.srctrlprj
+perf.data
+perf.data.old
+timing.txt
