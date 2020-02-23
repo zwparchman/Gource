@@ -28,6 +28,7 @@ gource_SOURCES = \
 	src/core/texture.cpp \
 	src/core/png_writer.cpp \
 	src/core/timezone.cpp \
+	src/toast.cpp \
 	src/Timing.cpp \
 	src/core/vbo.cpp \
 	src/core/vectors.cpp \

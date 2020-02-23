@@ -676,6 +676,10 @@ void Gource::keyPress(SDL_KeyboardEvent *e) {
         bool key_period       = e->keysym.unicode == SDLK_PERIOD;
         bool key_slash        = e->keysym.unicode == SDLK_SLASH;
 #endif
+        if( e->keysym.sym == SDLK_a){
+            toast_system.addToast(std::to_string(framecount), 1.0f);
+        }
+
         if (key_escape) {
             quit();
         }
@@ -2790,4 +2794,6 @@ void Gource::draw(float t, float dt) {
 
         font.draw(1, 3, message);
     }
+
+    toast_system.draw(dt, vec2(0,0), 1.0f, font);
 }
